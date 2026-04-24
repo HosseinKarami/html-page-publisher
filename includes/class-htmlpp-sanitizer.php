@@ -2,9 +2,10 @@
 /**
  * HTML sanitization for uploaded files.
  *
- * Strips runtime/tooling artifacts injected by AI export tools (e.g. Claude
- * artifacts via the "omelette" runtime) so the published page is clean static
- * HTML. Extensible via the `htmlpp_sanitize_html` filter.
+ * Built-in rules strip known runtime wrappers that some AI HTML export tools
+ * inject into their output, producing clean static HTML. HTML from other
+ * sources passes through unchanged. Extensible via the `htmlpp_sanitize_html`
+ * filter to add cleanup rules for other export formats.
  *
  * @package HTMLPP
  */
@@ -24,7 +25,7 @@ class HTMLPP_Sanitizer {
 	public static function sanitize( $html ) {
 		$html = (string) $html;
 
-		// Strip style/script tags injected by Claude artifact export runtime.
+		// Strip runtime style/script tags with the data-omelette-injected attribute.
 		$html = preg_replace(
 			'/<style\s+data-omelette-injected[^>]*>.*?<\/style>/is',
 			'',

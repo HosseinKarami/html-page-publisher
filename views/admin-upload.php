@@ -144,7 +144,7 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 							</span>
 						</div>
 						<p class="htmlpp-field__help">
-							<?php esc_html_e( 'Any standalone HTML file. AI-artifact runtime code is automatically stripped.', 'html-page-publisher' ); ?>
+							<?php esc_html_e( 'Any standalone HTML file. AI export runtime wrappers are automatically stripped.', 'html-page-publisher' ); ?>
 						</p>
 					</div>
 
