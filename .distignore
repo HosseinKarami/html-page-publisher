@@ -30,3 +30,6 @@ README.md
 CHANGELOG.md
 CONTRIBUTING.md
 Makefile
+build-zip.sh
+build
+*.zip
