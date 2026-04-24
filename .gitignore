@@ -1,0 +1,66 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies (installed, not tracked)
+node_modules/
+vendor/
+
+# Composer
+composer.phar
+# If this plugin ever adds a composer.json with non-dev deps that ship with
+# the release, DELETE the next line — you'll want composer.lock tracked for
+# reproducible builds. For plugins without shipped deps, lock is noise.
+composer.lock
+
+# PHP tooling caches
+.phpcs-cache
+.phpunit.result.cache
+.php-cs-fixer.cache
+phpcs-report.xml
+
+# Test / coverage output
+/coverage/
+/tests/coverage/
+clover.xml
+
+# Build output (if you add a build step later)
+/build/
+/dist/
+*.zip
+*.tar.gz
+
+# WordPress uploads / runtime state that might sneak in during local dev
+# (shouldn't appear in a plugin repo, but defensive)
+wp-content/
+uploads/
+
+# SVN deployment working copy (if you script wp.org deploys from this repo)
+/svn/
+/.svn/
+
+# Translation compiled files (track .po/.pot, ignore compiled .mo if built)
+# Uncomment if you build .mo files locally:
+# languages/*.mo
+
+# Local Flywheel / Local by WP Engine artifacts (your dev env)
+.localwp/

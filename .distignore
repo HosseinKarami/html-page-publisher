@@ -1,0 +1,32 @@
+# Files and directories to exclude from the WordPress.org distribution zip.
+# Used by tools like `wp-dist-archive` (10up) and most WP deploy scripts.
+# Everything listed here stays in the git repo but is NOT shipped to users.
+
+.git
+.github
+.gitignore
+.gitattributes
+.distignore
+.DS_Store
+.editorconfig
+.phpcs.xml.dist
+.phpcs.xml
+phpcs.xml
+phpcs.xml.dist
+phpunit.xml
+phpunit.xml.dist
+composer.json
+composer.lock
+package.json
+package-lock.json
+yarn.lock
+node_modules
+vendor
+tests
+bin
+docs
+.wordpress-org
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+Makefile

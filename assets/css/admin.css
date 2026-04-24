@@ -1,0 +1,809 @@
+/**
+ * HTML Page Publisher — admin styles.
+ */
+
+:root {
+	--htmlpp-accent: #5b5bd6;
+	--htmlpp-accent-hover: #4a4ac4;
+	--htmlpp-accent-soft: #eef0ff;
+	--htmlpp-accent-ring: rgba(91, 91, 214, 0.25);
+	--htmlpp-bg: #f6f7f9;
+	--htmlpp-card: #ffffff;
+	--htmlpp-border: #e4e7eb;
+	--htmlpp-border-strong: #d0d5dd;
+	--htmlpp-text: #101828;
+	--htmlpp-text-muted: #667085;
+	--htmlpp-text-faint: #98a2b3;
+	--htmlpp-danger: #d63638;
+	--htmlpp-danger-bg: #fef2f2;
+	--htmlpp-success: #027a48;
+	--htmlpp-success-bg: #ecfdf3;
+	--htmlpp-radius: 10px;
+	--htmlpp-radius-sm: 6px;
+	--htmlpp-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+
+/* Prevent the horizontal scroll that our negative margins would otherwise
+ * cause on the body. Only applies on this plugin's admin pages. */
+body.htmlpp-active {
+	overflow-x: hidden;
+}
+
+/* Break out of WP's default .wrap so the page fills the admin content area
+ * edge-to-edge. Negative margins cancel both .wrap (10px/20px/0/2px) and
+ * #wpcontent's 20px left padding. */
+.htmlpp-page {
+	margin: -10px -20px 0 -22px;
+	padding: 0 0 40px;
+	max-width: none;
+	background: var(--htmlpp-bg);
+	min-height: calc(100vh - 32px);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+	color: var(--htmlpp-text);
+}
+
+.htmlpp-page * {
+	box-sizing: border-box;
+}
+
+/* Content wrapper for everything that shouldn't touch the edges. */
+.htmlpp-content {
+	padding: 24px;
+}
+
+.htmlpp-content > :last-child {
+	margin-bottom: 0;
+}
+
+/* --- Hero ---------------------------------------------------------- */
+
+.htmlpp-hero {
+	position: relative;
+	background: #1e1b4b;
+	color: #fff;
+	padding: 36px 40px;
+	margin: 0;
+	border-radius: 0;
+	display: flex;
+	align-items: center;
+	gap: 24px;
+	overflow: hidden;
+	box-shadow: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.htmlpp-hero__icon {
+	flex: 0 0 auto;
+	width: 56px;
+	height: 56px;
+	background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0.1) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	backdrop-filter: blur(8px);
+	color: #a5b4fc;
+}
+
+.htmlpp-hero__icon svg {
+	width: 28px;
+	height: 28px;
+}
+
+.htmlpp-hero__body {
+	flex: 1;
+	min-width: 0;
+	position: relative;
+}
+
+.htmlpp-hero__title {
+	margin: 0 0 4px;
+	font-size: 22px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: #fff;
+}
+
+.htmlpp-hero__subtitle {
+	margin: 0;
+	font-size: 14px;
+	color: #94a3b8;
+	line-height: 1.5;
+}
+
+.htmlpp-hero__version {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 2px 8px;
+	background: rgba(99, 102, 241, 0.18);
+	border: 1px solid rgba(99, 102, 241, 0.3);
+	color: #c7d2fe;
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	vertical-align: 2px;
+}
+
+.htmlpp-hero__actions {
+	position: relative;
+}
+
+.htmlpp-hero__actions .htmlpp-button-ghost {
+	background: rgba(255, 255, 255, 0.05);
+	color: #e2e8f0;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(8px);
+}
+.htmlpp-hero__actions .htmlpp-button-ghost:hover {
+	background: rgba(99, 102, 241, 0.18);
+	border-color: rgba(99, 102, 241, 0.45);
+	color: #fff;
+}
+
+/* --- Stats row ----------------------------------------------------- */
+
+.htmlpp-stats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.htmlpp-stat {
+	background: var(--htmlpp-card);
+	border: 1px solid var(--htmlpp-border);
+	border-radius: var(--htmlpp-radius);
+	padding: 18px 20px;
+	box-shadow: var(--htmlpp-shadow);
+}
+
+.htmlpp-stat__label {
+	margin: 0 0 6px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--htmlpp-text-muted);
+}
+
+.htmlpp-stat__value {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 700;
+	color: var(--htmlpp-text);
+	letter-spacing: -0.01em;
+}
+
+.htmlpp-stat__hint {
+	margin: 4px 0 0;
+	font-size: 12px;
+	color: var(--htmlpp-text-muted);
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	word-break: break-all;
+}
+
+/* --- Notices ------------------------------------------------------- */
+
+.htmlpp-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px 18px;
+	border-radius: var(--htmlpp-radius);
+	border: 1px solid transparent;
+	margin-bottom: 20px;
+	font-size: 14px;
+}
+
+.htmlpp-notice--success {
+	background: var(--htmlpp-success-bg);
+	border-color: #a6e9c3;
+	color: var(--htmlpp-success);
+}
+
+.htmlpp-notice--error {
+	background: var(--htmlpp-danger-bg);
+	border-color: #fecdcd;
+	color: var(--htmlpp-danger);
+}
+
+.htmlpp-notice__icon {
+	flex: 0 0 auto;
+	margin-top: 1px;
+}
+
+.htmlpp-notice__icon svg {
+	width: 18px;
+	height: 18px;
+}
+
+.htmlpp-notice__body {
+	flex: 1;
+	line-height: 1.5;
+}
+
+.htmlpp-notice__body a {
+	color: inherit;
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* --- Layout grid --------------------------------------------------- */
+
+.htmlpp-grid {
+	display: grid;
+	grid-template-columns: 1fr 1.1fr;
+	gap: 20px;
+	align-items: start;
+}
+
+/* --- Card ---------------------------------------------------------- */
+
+.htmlpp-card {
+	background: var(--htmlpp-card);
+	border: 1px solid var(--htmlpp-border);
+	border-radius: var(--htmlpp-radius);
+	box-shadow: var(--htmlpp-shadow);
+	overflow: hidden;
+}
+
+.htmlpp-card__header {
+	padding: 18px 24px;
+	border-bottom: 1px solid var(--htmlpp-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.htmlpp-card__title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+}
+
+.htmlpp-card__subtitle {
+	margin: 2px 0 0;
+	font-size: 13px;
+	color: var(--htmlpp-text-muted);
+	font-weight: 400;
+}
+
+.htmlpp-card__body {
+	padding: 24px;
+}
+
+.htmlpp-card__body--flush {
+	padding: 0;
+}
+
+/* --- Form fields --------------------------------------------------- */
+
+.htmlpp-field {
+	margin-bottom: 18px;
+}
+
+.htmlpp-field:last-child {
+	margin-bottom: 0;
+}
+
+.htmlpp-field__label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+}
+
+.htmlpp-field__control input[type="text"],
+.htmlpp-field__control input[type="url"] {
+	width: 100%;
+	padding: 9px 12px;
+	border: 1px solid var(--htmlpp-border-strong);
+	border-radius: var(--htmlpp-radius-sm);
+	font-size: 14px;
+	color: var(--htmlpp-text);
+	background: #fff;
+	transition: border-color 0.12s, box-shadow 0.12s;
+	font-family: inherit;
+	line-height: 1.4;
+	box-shadow: none;
+}
+
+.htmlpp-field__control input[type="text"]:focus,
+.htmlpp-field__control input[type="url"]:focus {
+	border-color: var(--htmlpp-accent);
+	box-shadow: 0 0 0 3px var(--htmlpp-accent-ring);
+	outline: none;
+}
+
+.htmlpp-field__control--mono input {
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+.htmlpp-field__help {
+	margin-top: 6px;
+	font-size: 12px;
+	color: var(--htmlpp-text-muted);
+	line-height: 1.5;
+}
+
+.htmlpp-field__help code {
+	background: var(--htmlpp-accent-soft);
+	color: var(--htmlpp-accent);
+	padding: 1px 6px;
+	border-radius: 4px;
+	font-size: 11px;
+}
+
+/* --- Dropzone (file inputs) --------------------------------------- */
+
+.htmlpp-dropzone {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 18px;
+	border: 2px dashed var(--htmlpp-border-strong);
+	border-radius: var(--htmlpp-radius-sm);
+	background: #fafbfc;
+	transition: border-color 0.15s, background 0.15s;
+	cursor: pointer;
+}
+
+.htmlpp-dropzone:hover {
+	border-color: var(--htmlpp-accent);
+	background: var(--htmlpp-accent-soft);
+}
+
+.htmlpp-dropzone input[type="file"] {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.htmlpp-dropzone__icon {
+	flex: 0 0 auto;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--htmlpp-accent-soft);
+	border-radius: 8px;
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-dropzone__icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.htmlpp-dropzone__body {
+	flex: 1;
+	min-width: 0;
+}
+
+.htmlpp-dropzone__title {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+}
+
+.htmlpp-dropzone__hint {
+	display: block;
+	font-size: 12px;
+	color: var(--htmlpp-text-muted);
+	margin-top: 2px;
+}
+
+.htmlpp-dropzone.is-active {
+	border-color: var(--htmlpp-accent);
+	background: var(--htmlpp-accent-soft);
+}
+
+/* --- Buttons ------------------------------------------------------- */
+
+.htmlpp-button,
+.htmlpp-button-primary,
+.htmlpp-button-ghost {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 16px;
+	font-size: 13px;
+	font-weight: 600;
+	border-radius: var(--htmlpp-radius-sm);
+	border: 1px solid transparent;
+	cursor: pointer;
+	transition: background 0.12s, border-color 0.12s, color 0.12s;
+	text-decoration: none;
+	line-height: 1;
+	font-family: inherit;
+}
+
+.htmlpp-button-primary {
+	background: var(--htmlpp-accent);
+	color: #fff;
+}
+.htmlpp-button-primary:hover,
+.htmlpp-button-primary:focus {
+	background: var(--htmlpp-accent-hover);
+	color: #fff;
+}
+
+.htmlpp-button-ghost {
+	background: #fff;
+	color: var(--htmlpp-text);
+	border-color: var(--htmlpp-border-strong);
+}
+.htmlpp-button-ghost:hover {
+	border-color: var(--htmlpp-accent);
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-form-footer {
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid var(--htmlpp-border);
+	display: flex;
+	justify-content: flex-end;
+}
+
+/* --- Table --------------------------------------------------------- */
+
+.htmlpp-table-scroll {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.htmlpp-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: auto;
+}
+
+.htmlpp-table thead th {
+	text-align: left;
+	padding: 12px 24px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--htmlpp-text-muted);
+	background: #fafbfc;
+	border-bottom: 1px solid var(--htmlpp-border);
+}
+
+.htmlpp-table tbody td {
+	padding: 14px 24px;
+	border-bottom: 1px solid var(--htmlpp-border);
+	font-size: 13px;
+	vertical-align: middle;
+}
+
+.htmlpp-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.htmlpp-table tbody tr:hover {
+	background: #fafbfc;
+}
+
+.htmlpp-slug {
+	display: block;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+	font-size: 14px;
+	text-decoration: none;
+}
+
+.htmlpp-slug:hover {
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-url-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+	padding: 3px 8px;
+	background: #f0f2f5;
+	border-radius: 6px;
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-size: 11px;
+	color: var(--htmlpp-text-muted);
+	max-width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.htmlpp-url-pill__text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.htmlpp-copy-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 2px;
+	color: var(--htmlpp-text-faint);
+	display: inline-flex;
+	align-items: center;
+	border-radius: 4px;
+	transition: color 0.12s, background 0.12s;
+}
+
+.htmlpp-copy-btn:hover {
+	color: var(--htmlpp-accent);
+	background: var(--htmlpp-accent-soft);
+}
+
+.htmlpp-copy-btn.is-copied {
+	color: var(--htmlpp-success);
+}
+
+.htmlpp-copy-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+.htmlpp-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 20px;
+	font-size: 11px;
+	font-weight: 600;
+	background: var(--htmlpp-accent-soft);
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-delete-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: none;
+	color: var(--htmlpp-danger);
+	cursor: pointer;
+	padding: 6px 10px;
+	border-radius: var(--htmlpp-radius-sm);
+	font-size: 12px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: background 0.12s;
+}
+
+.htmlpp-delete-btn:hover {
+	background: var(--htmlpp-danger-bg);
+}
+
+.htmlpp-delete-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* --- Empty state --------------------------------------------------- */
+
+.htmlpp-empty {
+	text-align: center;
+	padding: 48px 24px;
+}
+
+.htmlpp-empty__icon {
+	width: 48px;
+	height: 48px;
+	margin: 0 auto 12px;
+	background: var(--htmlpp-accent-soft);
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-empty__icon svg {
+	width: 24px;
+	height: 24px;
+}
+
+.htmlpp-empty__title {
+	margin: 0 0 4px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+}
+
+.htmlpp-empty__body {
+	margin: 0;
+	font-size: 13px;
+	color: var(--htmlpp-text-muted);
+}
+
+/* --- Settings page tweaks ----------------------------------------- */
+
+.htmlpp-page .form-table {
+	margin-top: 0;
+}
+
+.htmlpp-page .form-table th {
+	padding: 16px 20px 16px 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+	width: 200px;
+}
+
+.htmlpp-page .form-table td {
+	padding: 14px 0;
+}
+
+.htmlpp-page .form-table input[type="text"] {
+	padding: 9px 12px;
+	border: 1px solid var(--htmlpp-border-strong);
+	border-radius: var(--htmlpp-radius-sm);
+	font-size: 14px;
+	box-shadow: none;
+	min-width: 320px;
+}
+
+.htmlpp-page .form-table input[type="text"]:focus {
+	border-color: var(--htmlpp-accent);
+	box-shadow: 0 0 0 3px var(--htmlpp-accent-ring);
+	outline: none;
+}
+
+.htmlpp-page .form-table .description {
+	font-size: 12px;
+	color: var(--htmlpp-text-muted);
+	margin-top: 6px;
+	max-width: 640px;
+	line-height: 1.5;
+}
+
+.htmlpp-page .form-table .description code {
+	background: var(--htmlpp-accent-soft);
+	color: var(--htmlpp-accent);
+	padding: 1px 6px;
+	border-radius: 4px;
+}
+
+.htmlpp-page .submit {
+	padding: 20px 0 0;
+	margin: 20px 0 0;
+	border-top: 1px solid var(--htmlpp-border);
+}
+
+.htmlpp-page .submit .button-primary {
+	background: var(--htmlpp-accent);
+	border-color: var(--htmlpp-accent);
+	color: #fff;
+	text-shadow: none;
+	box-shadow: none;
+	padding: 7px 16px;
+	font-weight: 600;
+	border-radius: var(--htmlpp-radius-sm);
+	min-height: auto;
+	line-height: 1.4;
+}
+
+.htmlpp-page .submit .button-primary:hover,
+.htmlpp-page .submit .button-primary:focus {
+	background: var(--htmlpp-accent-hover);
+	border-color: var(--htmlpp-accent-hover);
+	color: #fff;
+	box-shadow: none;
+}
+
+.htmlpp-page h2 {
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0 0 8px;
+}
+
+/* --- Responsive ---------------------------------------------------- */
+
+@media (max-width: 960px) {
+	.htmlpp-grid {
+		grid-template-columns: 1fr;
+	}
+	.htmlpp-stats {
+		grid-template-columns: 1fr;
+	}
+	.htmlpp-hero {
+		flex-direction: column;
+		align-items: flex-start;
+		text-align: left;
+		padding: 24px;
+	}
+	.htmlpp-content {
+		padding: 16px;
+	}
+}
+
+/* Handle WP's admin-menu-folded / mobile layouts — the #wpcontent padding
+ * changes so re-match our negative margins. */
+@media (max-width: 782px) {
+	.htmlpp-page {
+		margin-left: -10px;
+		margin-right: -10px;
+	}
+
+	.htmlpp-hero {
+		padding: 20px;
+	}
+
+	.htmlpp-hero__title {
+		font-size: 18px;
+	}
+
+	.htmlpp-hero__actions {
+		width: 100%;
+	}
+
+	.htmlpp-hero__actions .htmlpp-button,
+	.htmlpp-hero__actions .htmlpp-button-ghost {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.htmlpp-content {
+		padding: 12px;
+	}
+
+	.htmlpp-card__header {
+		padding: 14px 16px;
+	}
+
+	.htmlpp-card__body {
+		padding: 16px;
+	}
+
+	.htmlpp-table thead th,
+	.htmlpp-table tbody td {
+		padding: 10px 12px;
+	}
+
+	/* Hide the Images column on narrow screens — count is low priority. */
+	.htmlpp-table thead th:nth-child(2),
+	.htmlpp-table tbody td:nth-child(2) {
+		display: none;
+	}
+
+	/* Stack the URL pill under the slug with full width instead of fighting
+	 * for inline space. */
+	.htmlpp-url-pill {
+		display: flex;
+		width: 100%;
+		max-width: 100%;
+	}
+}
+
+@media (max-width: 520px) {
+	/* Hide the Modified column too. Leave just Page + Delete. */
+	.htmlpp-table thead th:nth-child(3),
+	.htmlpp-table tbody td:nth-child(3) {
+		display: none;
+	}
+
+	.htmlpp-delete-btn {
+		padding: 6px 8px;
+	}
+
+	.htmlpp-delete-btn span,
+	.htmlpp-delete-btn > *:not(svg) {
+		display: none;
+	}
+}
