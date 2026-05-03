@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $htmlpp_settings     = HTMLPP_Settings::get_settings();
 $htmlpp_example_url  = HTMLPP_Storage::public_page_url( 'your-slug' );
-$htmlpp_storage_path = str_replace( ABSPATH, '', HTMLPP_Storage::base_dir() );
+$htmlpp_storage_path = ltrim( wp_make_link_relative( HTMLPP_Storage::base_url() ), '/' );
 $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' );
 ?>
 <div class="wrap htmlpp-page">
