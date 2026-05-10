@@ -5,14 +5,54 @@
  *  - Copy-URL buttons
  *  - Dropzone drag & drop for file inputs (falls back to native click)
  *  - Show selected filename inside dropzone
+ *  - Reposition WP's Help / Screen Options DOM to sit below the hero
  */
 ( function () {
 	'use strict';
 
 	document.addEventListener( 'DOMContentLoaded', function () {
+		relocateScreenMeta();
 		initCopyButtons();
 		initDropzones();
 	} );
+
+	/**
+	 * Move WP's #screen-meta (Help/Screen Options panel) and
+	 * #screen-meta-links (the Help/Screen Options buttons) from above the
+	 * .wrap into our hero's sibling slot, so the buttons appear directly
+	 * below the indigo hero instead of overlapping its top-right corner.
+	 *
+	 * Keeps WP's native DOM order (panel before buttons) so the slide-down
+	 * behavior keeps working unchanged.
+	 */
+	function relocateScreenMeta() {
+		if ( ! document.body.classList.contains( 'htmlpp-active' ) ) {
+			return;
+		}
+		var wrap = document.querySelector( '.htmlpp-page' );
+		if ( ! wrap ) {
+			return;
+		}
+		var hero = wrap.querySelector( '.htmlpp-hero' );
+		if ( ! hero ) {
+			return;
+		}
+		var meta = document.getElementById( 'screen-meta' );
+		var metaLinks = document.getElementById( 'screen-meta-links' );
+
+		var anchor = hero;
+		if ( meta ) {
+			anchor.after( meta );
+			anchor = meta;
+		}
+		if ( metaLinks ) {
+			anchor.after( metaLinks );
+		}
+
+		// Signal the CSS to reveal #screen-meta-links now that it's in
+		// the right place. Hidden until this point to avoid a flash + jump.
+		document.body.classList.add( 'htmlpp-meta-ready' );
+	}
 
 	function initCopyButtons() {
 		document.querySelectorAll( '.htmlpp-copy-btn' ).forEach( function ( btn ) {

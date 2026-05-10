@@ -21,12 +21,7 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 
 	<div class="htmlpp-hero">
 		<div class="htmlpp-hero__icon" aria-hidden="true">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-				<polyline points="13 2 13 9 20 9"/>
-				<polyline points="10 13 8 16 10 19"/>
-				<polyline points="14 13 16 16 14 19"/>
-			</svg>
+		<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><defs><radialGradient id="svg-p-a" cx="78%" cy="22%" r="55%"><stop offset="0%" stop-color="#6366f1" stop-opacity=".35"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0"/></radialGradient><filter id="svg-p-b" width="140%" height="140%" x="-20%" y="-20%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dy="3" result="offset"/><feComponentTransfer><feFuncA slope=".18" type="linear"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="256" height="256" fill="#1e1b4b" rx="56"/><rect width="256" height="256" fill="url(#svg-p-a)" rx="56"/><g filter="url(#svg-p-b)" transform="translate(64 50)"><path fill="#fff" d="M0 12Q0 0 12 0h76l40 40v104q0 12-12 12H12q-12 0-12-12Z"/><path fill="#c7d2fe" d="m88 0 40 40h-28q-12 0-12-12Z"/><g fill="none" stroke="#5b5bd6" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"><path d="M40 65 24 85l16 20M54 57l20 56M88 65l16 20-16 20"/></g></g></svg>
 		</div>
 		<div class="htmlpp-hero__body">
 			<h1 class="htmlpp-hero__title">
@@ -38,11 +33,28 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 		</div>
 		<div class="htmlpp-hero__actions">
 			<a href="<?php echo esc_url( $htmlpp_settings_url ); ?>" class="htmlpp-button htmlpp-button-ghost">
-				<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<circle cx="12" cy="12" r="3"/>
-					<path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+				<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="21" y1="4" x2="14" y2="4"/>
+					<line x1="10" y1="4" x2="3" y2="4"/>
+					<line x1="21" y1="12" x2="12" y2="12"/>
+					<line x1="8" y1="12" x2="3" y2="12"/>
+					<line x1="21" y1="20" x2="16" y2="20"/>
+					<line x1="12" y1="20" x2="3" y2="20"/>
+					<line x1="14" y1="2" x2="14" y2="6"/>
+					<line x1="8" y1="10" x2="8" y2="14"/>
+					<line x1="16" y1="18" x2="16" y2="22"/>
 				</svg>
 				<?php esc_html_e( 'Settings', 'html-page-publisher' ); ?>
+			</a>
+			<a href="<?php echo esc_url( HTMLPP_Admin::donate_url( 'admin-header-donate' ) ); ?>" class="htmlpp-button htmlpp-button-donate" target="_blank" rel="noopener">
+				<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
+					<path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+					<line x1="6" y1="2" x2="6" y2="4"/>
+					<line x1="10" y1="2" x2="10" y2="4"/>
+					<line x1="14" y1="2" x2="14" y2="4"/>
+				</svg>
+				<?php esc_html_e( 'Donate', 'html-page-publisher' ); ?>
 			</a>
 		</div>
 	</div>

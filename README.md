@@ -1,14 +1,14 @@
 # HTML Page Publisher
 
-> Publish HTML landing pages — from Claude Design, ChatGPT, Gemini, v0, Bolt, or hand-written — at a clean, configurable URL.
+> Publish HTML landing pages (from Claude Design, ChatGPT, Gemini, v0, Bolt, or hand-written) at a clean, configurable URL.
 
 A WordPress plugin for rapidly publishing static HTML landing pages without embedding them in a theme. Built for the era of AI-generated pages: works seamlessly with output from Claude Design, ChatGPT, Gemini, v0, and Bolt, and with any hand-written static HTML.
 
 ## Features
 
 - Upload a single `.html` file + image assets through a polished admin UI
-- **Automatic cleanup of AI-export wrappers** — strips runtime code some AI HTML export tools inject so published pages are pure static HTML
-- Configurable URL prefix — default `/pages/your-slug/`, change to anything
+- **Automatic cleanup of AI-export wrappers**: strips runtime code some AI HTML export tools inject so published pages are pure static HTML
+- Configurable URL prefix: default `/pages/your-slug/`, change to anything
 - Optional subdomain routing (`sales.example.com/your-slug/`) with DNS pointed at the same server
 - Nonce-protected forms, capability checks, path-traversal guards, strict extension filtering
 - Extensible via the `htmlpp_sanitize_html` filter for other AI export formats
@@ -68,4 +68,4 @@ Issues and pull requests welcome. Please open an issue before starting on non-tr
 
 ## Author
 
-[Hossein Karami](https://hosseinkarami.com) — [@HosseinKarami](https://github.com/HosseinKarami)
+[Hossein Karami](https://hosseinkarami.com) · [@HosseinKarami](https://github.com/HosseinKarami)

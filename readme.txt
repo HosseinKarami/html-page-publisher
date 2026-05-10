@@ -1,27 +1,28 @@
 === HTML Page Publisher ===
 Contributors: hosseinkarami
+Donate link: https://buymeacoffee.com/hosseinkarami?utm_source=wordpress.org&utm_medium=plugin-page&utm_campaign=donate&utm_content=readme-donate
 Tags: html, landing page, ai, claude, chatgpt
 Requires at least: 5.9
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Publish HTML landing pages — including output from Claude Design, ChatGPT, Gemini, v0, and Bolt — at a clean, configurable URL.
+Publish HTML landing pages (including output from Claude Design, ChatGPT, Gemini, v0, and Bolt) at a clean, configurable URL.
 
 == Description ==
 
-HTML Page Publisher lets you drop a standalone HTML file into WordPress and have it served as a landing page at a clean URL. Works with output from **Claude Design** and HTML exported from other AI tools like ChatGPT, Gemini, v0, and Bolt — and with any hand-written static HTML. Perfect for sales collateral, one-pagers, lead-gen pages, and campaign microsites.
+HTML Page Publisher lets you drop a standalone HTML file into WordPress and have it served as a landing page at a clean URL. Works with output from **Claude Design** and HTML exported from other AI tools like ChatGPT, Gemini, v0, and Bolt, and with any hand-written static HTML too. Perfect for sales collateral, one-pagers, lead-gen pages, and campaign microsites.
 
 **Key features**
 
 * Simple admin UI: upload one HTML file + its image assets, get a public URL
-* **Automatic cleanup of AI-export wrappers** — strips runtime code some AI HTML export tools inject so the published page is pure static HTML
-* **Configurable URL prefix** — default `/pages/your-slug/`, change to anything you like (e.g. `/resources/`, `/guides/`)
-* **Optional subdomain routing** — point `sales.example.com` at your site and pages appear at `sales.example.com/your-slug/`
-* **Secure by default** — nonce-protected forms, capability checks, path-traversal guards, and strict file-extension filtering
-* **Extensible** — use the `htmlpp_sanitize_html` filter to add cleanup rules for other AI export formats
+* **Automatic cleanup of AI-export wrappers**: strips runtime code some AI HTML export tools inject so the published page is pure static HTML
+* **Configurable URL prefix**: default `/pages/your-slug/`, change to anything you like (e.g. `/resources/`, `/guides/`)
+* **Optional subdomain routing**: point `sales.example.com` at your site and pages appear at `sales.example.com/your-slug/`
+* **Secure by default**: nonce-protected forms, capability checks, path-traversal guards, and strict file-extension filtering
+* **Extensible**: use the `htmlpp_sanitize_html` filter to add cleanup rules for other AI export formats
 
 **Use cases**
 
@@ -55,7 +56,7 @@ Then enter the hostname in **HTML Pages → Settings → Subdomain**. Pages will
 
 = Is it safe to upload arbitrary HTML? =
 
-Only users with the `manage_options` capability (administrators by default) can upload pages. Uploaded HTML is served as-is — including any `<script>` tags it contains — so only upload HTML you trust. The plugin strips known runtime wrappers injected by some AI export tools but does not otherwise filter markup.
+Only users with the `manage_options` capability (administrators by default) can upload pages. Uploaded HTML is served as-is, including any `<script>` tags it contains, so only upload HTML you trust. The plugin strips known runtime wrappers injected by some AI export tools but does not otherwise filter markup.
 
 = Will uninstalling delete my pages? =
 
@@ -63,9 +64,20 @@ No. Uninstalling removes the plugin's settings but leaves the uploaded pages in 
 
 = Does this work with caching plugins or a CDN? =
 
-Pages are served via a direct PHP readfile that happens before WordPress's main query runs. Most page caches (WP Rocket, W3 Total Cache) won't cache these URLs by default. If you want them cached at the CDN edge, add the URL pattern to your caching rules — they're plain HTML with cache-friendly headers.
+Pages are served via a direct PHP readfile that happens before WordPress's main query runs. Most page caches (WP Rocket, W3 Total Cache) won't cache these URLs by default. If you want them cached at the CDN edge, add the URL pattern to your caching rules. They're plain HTML with cache-friendly headers.
 
 == Changelog ==
+
+= 1.1.0 =
+* New: Branded admin footer with author attribution, support, and donate links.
+* New: Contextual Help tab on plugin admin pages (Overview, FAQ, Support).
+* New: Settings and Donate links added to the WordPress plugins list (action links and row meta).
+* Improved: Refreshed hero design with a custom plugin icon.
+* Improved: Cleaner hero buttons with corner radius matching the rest of the admin UI.
+* Improved: Settings page icon updated to a clearer sliders icon.
+* Improved: Help / Screen Options bar repositioned below the hero for a cleaner layout.
+* Improved: Admin footer now flows naturally below content and stays visible on small screens.
+* Improved: Microcopy cleanup across admin strings.
 
 = 1.0.0 =
 * Initial release.
@@ -80,6 +92,9 @@ Pages are served via a direct PHP readfile that happens before WordPress's main 
 2. Settings page for URL prefix and optional subdomain.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Branded admin footer, contextual Help tab, refreshed UI, and donate/support links. Fully backward-compatible.
 
 = 1.0.0 =
 Initial release.

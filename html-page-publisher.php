@@ -3,7 +3,7 @@
  * Plugin Name:       HTML Page Publisher
  * Plugin URI:        https://github.com/HosseinKarami/html-page-publisher
  * Description:       Upload standalone HTML files (including AI-generated pages from Claude Design, ChatGPT, Gemini, v0, Bolt) and publish them as landing pages at a configurable URL. Optional subdomain routing.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Author:            Hossein Karami
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HTMLPP_VERSION', '1.0.0' );
+define( 'HTMLPP_VERSION', '1.1.0' );
 define( 'HTMLPP_PLUGIN_FILE', __FILE__ );
 define( 'HTMLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HTMLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
