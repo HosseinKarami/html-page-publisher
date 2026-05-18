@@ -7,10 +7,13 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 ## Features
 
 - Upload a single `.html` file + image assets through a polished admin UI
+- **Built-in HTML editor**: edit published pages in the dashboard with the native WordPress code editor (syntax highlighting), large/minified files fall back to a plain editor automatically
+- **Version history**: every save snapshots the previous version; restore any earlier version with one click (restoring is itself undoable; retention filterable via `htmlpp_max_backups`)
+- **Image management**: add, replace, or delete a page's images in place — Replace keeps the original filename so existing references keep working
 - **Automatic cleanup of AI-export wrappers**: strips runtime code some AI HTML export tools inject so published pages are pure static HTML
 - Configurable URL prefix: default `/pages/your-slug/`, change to anything
 - Optional subdomain routing (`sales.example.com/your-slug/`) with DNS pointed at the same server
-- Nonce-protected forms, capability checks, path-traversal guards, strict extension filtering
+- Nonce-protected forms, capability checks, path-traversal guards, strict extension filtering; editing respects `DISALLOW_FILE_EDIT` / `DISALLOW_FILE_MODS`
 - Extensible via the `htmlpp_sanitize_html` filter for other AI export formats
 
 ## Installation
@@ -36,7 +39,8 @@ Quick start:
 1. Activate the plugin → a new **HTML Pages** menu appears
 2. Enter a slug, pick an HTML file, optionally add images → Publish
 3. Your page is live at `example.com/pages/your-slug/`
-4. To change the URL prefix or enable subdomain routing, open **HTML Pages → Settings**
+4. Click **Edit** on any page to change its HTML or manage its images in the dashboard; previous versions are saved automatically and can be restored
+5. To change the URL prefix or enable subdomain routing, open **HTML Pages → Settings**
 
 ## Development
 

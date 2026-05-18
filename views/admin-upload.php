@@ -224,19 +224,19 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 								<th><?php esc_html_e( 'Page', 'html-page-publisher' ); ?></th>
 								<th style="width:90px;"><?php esc_html_e( 'Images', 'html-page-publisher' ); ?></th>
 								<th style="width:160px;"><?php esc_html_e( 'Modified', 'html-page-publisher' ); ?></th>
-								<th style="width:90px;"></th>
+								<th style="width:170px;"></th>
 							</tr>
 						</thead>
 						<tbody>
-							<?php foreach ( $pages as $page ) : ?>
+							<?php foreach ( $pages as $htmlpp_page ) : ?>
 								<tr>
 									<td>
-										<a href="<?php echo esc_url( $page['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="htmlpp-slug">
-											<?php echo esc_html( $page['slug'] ); ?>
+										<a href="<?php echo esc_url( $htmlpp_page['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="htmlpp-slug">
+											<?php echo esc_html( $htmlpp_page['slug'] ); ?>
 										</a>
-										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $page['url'] ); ?>">
-											<span class="htmlpp-url-pill__text"><?php echo esc_html( $page['url'] ); ?></span>
-											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $page['url'] ); ?>" aria-label="<?php esc_attr_e( 'Copy URL', 'html-page-publisher' ); ?>">
+										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_page['url'] ); ?>">
+											<span class="htmlpp-url-pill__text"><?php echo esc_html( $htmlpp_page['url'] ); ?></span>
+											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $htmlpp_page['url'] ); ?>" aria-label="<?php esc_attr_e( 'Copy URL', 'html-page-publisher' ); ?>">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
 													<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -244,21 +244,30 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 											</button>
 										</span>
 									</td>
-									<td><?php echo (int) count( $page['images'] ); ?></td>
-									<td><?php echo esc_html( wp_date( 'M j, Y g:ia', $page['modified'] ) ); ?></td>
+									<td><?php echo (int) count( $htmlpp_page['images'] ); ?></td>
+									<td><?php echo esc_html( wp_date( 'M j, Y g:ia', $htmlpp_page['modified'] ) ); ?></td>
 									<td>
-										<form method="post" style="display:inline" onsubmit="return confirm('<?php echo esc_js( sprintf( /* translators: %s: page slug */ __( 'Delete "%s"? This cannot be undone.', 'html-page-publisher' ), $page['slug'] ) ); ?>')">
-											<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
-											<input type="hidden" name="htmlpp_delete" value="<?php echo esc_attr( $page['slug'] ); ?>" />
-											<button type="submit" class="htmlpp-delete-btn">
+										<div class="htmlpp-row-actions">
+											<a href="<?php echo esc_url( admin_url( 'admin.php?page=html-page-publisher&action=edit&slug=' . rawurlencode( $htmlpp_page['slug'] ) ) ); ?>" class="htmlpp-edit-btn">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-													<polyline points="3 6 5 6 21 6"/>
-													<path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-													<path d="M10 11v6M14 11v6"/>
+													<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+													<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/>
 												</svg>
-												<?php esc_html_e( 'Delete', 'html-page-publisher' ); ?>
-											</button>
-										</form>
+												<?php esc_html_e( 'Edit', 'html-page-publisher' ); ?>
+											</a>
+											<form method="post" style="display:inline" onsubmit="return confirm('<?php echo esc_js( sprintf( /* translators: %s: page slug */ __( 'Delete "%s"? This cannot be undone.', 'html-page-publisher' ), $htmlpp_page['slug'] ) ); ?>')">
+												<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
+												<input type="hidden" name="htmlpp_delete" value="<?php echo esc_attr( $htmlpp_page['slug'] ); ?>" />
+												<button type="submit" class="htmlpp-delete-btn">
+													<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+														<polyline points="3 6 5 6 21 6"/>
+														<path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+														<path d="M10 11v6M14 11v6"/>
+													</svg>
+													<?php esc_html_e( 'Delete', 'html-page-publisher' ); ?>
+												</button>
+											</form>
+										</div>
 									</td>
 								</tr>
 							<?php endforeach; ?>

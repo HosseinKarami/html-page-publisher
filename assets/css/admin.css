@@ -745,6 +745,264 @@ body.htmlpp-active.htmlpp-meta-ready #screen-meta-links {
 	color: var(--htmlpp-text-muted);
 }
 
+/* --- Row actions (list table) ------------------------------------- */
+
+.htmlpp-row-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.htmlpp-edit-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--htmlpp-accent);
+	cursor: pointer;
+	padding: 6px 10px;
+	border-radius: var(--htmlpp-radius-sm);
+	font-size: 12px;
+	font-weight: 500;
+	text-decoration: none;
+	transition: background 0.12s;
+}
+
+.htmlpp-edit-btn:hover {
+	background: var(--htmlpp-accent-soft);
+	color: var(--htmlpp-accent);
+}
+
+.htmlpp-edit-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* --- Editor screen ------------------------------------------------- */
+
+.htmlpp-editor-wrap {
+	border: 1px solid var(--htmlpp-border-strong);
+	border-radius: var(--htmlpp-radius-sm);
+	overflow: hidden;
+}
+
+/* Fixed-height box that scrolls internally, like WP's native file editor —
+ * the page stays short so the Save button is always right under the editor. */
+.htmlpp-code {
+	width: 100%;
+	height: 62vh;
+	min-height: 360px;
+	margin: 0;
+	padding: 14px 16px;
+	border: 0;
+	resize: vertical;
+	display: block;
+	overflow: auto;
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--htmlpp-text);
+	background: #fff;
+	tab-size: 2;
+	box-shadow: none;
+}
+
+.htmlpp-code:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+/* WP's CodeMirror, once it replaces the textarea — same fixed height so it
+ * scrolls inside its own box instead of growing the page. */
+.htmlpp-editor-wrap .CodeMirror {
+	height: 62vh;
+	min-height: 360px;
+	font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.htmlpp-editor-wrap .CodeMirror-focused {
+	box-shadow: inset 0 0 0 2px var(--htmlpp-accent-ring);
+}
+
+.htmlpp-bigfile-note {
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	background: #fffbeb;
+	border: 1px solid #fde68a;
+	border-radius: var(--htmlpp-radius-sm);
+	color: #92400e;
+}
+
+.htmlpp-bigfile-note[hidden] {
+	display: none;
+}
+
+/* Save / Cancel sit directly under the fixed-height editor box — no sticky
+ * needed since the editor scrolls internally and never pushes them away. */
+.htmlpp-actionbar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 14px;
+}
+
+.htmlpp-actionbar .htmlpp-button-ghost {
+	text-decoration: none;
+}
+
+.htmlpp-restore-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: none;
+	border: 1px solid var(--htmlpp-border-strong);
+	color: var(--htmlpp-text);
+	cursor: pointer;
+	padding: 6px 12px;
+	border-radius: var(--htmlpp-radius-sm);
+	font-size: 12px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.htmlpp-restore-btn:hover {
+	border-color: var(--htmlpp-accent);
+	color: var(--htmlpp-accent);
+	background: var(--htmlpp-accent-soft);
+}
+
+.htmlpp-restore-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* --- Images & Assets panel ---------------------------------------- */
+
+.htmlpp-assets {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 14px;
+}
+
+.htmlpp-asset {
+	display: flex;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid var(--htmlpp-border);
+	border-radius: var(--htmlpp-radius-sm);
+	background: #fff;
+}
+
+.htmlpp-asset__thumb {
+	flex: 0 0 auto;
+	width: 64px;
+	height: 64px;
+	border: 1px solid var(--htmlpp-border);
+	border-radius: var(--htmlpp-radius-sm);
+	overflow: hidden;
+	background: repeating-conic-gradient(#f0f2f5 0 25%, #fff 0 50%) 50% / 16px 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.htmlpp-asset__thumb img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+	display: block;
+}
+
+.htmlpp-asset__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.htmlpp-asset__name {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--htmlpp-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.htmlpp-asset__size {
+	display: block;
+	margin: 1px 0 6px;
+	font-size: 11px;
+	color: var(--htmlpp-text-muted);
+}
+
+.htmlpp-asset .htmlpp-url-pill {
+	margin-top: 0;
+	width: 100%;
+	max-width: 100%;
+}
+
+.htmlpp-asset__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.htmlpp-asset__actions form {
+	margin: 0;
+}
+
+.htmlpp-asset-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	position: relative;
+	padding: 5px 10px;
+	border: 1px solid var(--htmlpp-border-strong);
+	border-radius: var(--htmlpp-radius-sm);
+	background: #fff;
+	color: var(--htmlpp-text);
+	font-size: 12px;
+	font-weight: 500;
+	font-family: inherit;
+	cursor: pointer;
+	transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.htmlpp-asset-btn:hover {
+	border-color: var(--htmlpp-accent);
+	color: var(--htmlpp-accent);
+	background: var(--htmlpp-accent-soft);
+}
+
+/* The Replace control is a <label> wrapping a file input. */
+.htmlpp-asset-btn input[type="file"] {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.htmlpp-asset-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+.htmlpp-asset-btn--danger {
+	color: var(--htmlpp-danger);
+}
+
+.htmlpp-asset-btn--danger:hover {
+	border-color: var(--htmlpp-danger);
+	color: var(--htmlpp-danger);
+	background: var(--htmlpp-danger-bg);
+}
+
 /* --- Settings page tweaks ----------------------------------------- */
 
 .htmlpp-page .form-table {
@@ -912,12 +1170,15 @@ body.htmlpp-active.htmlpp-meta-ready #screen-meta-links {
 		display: none;
 	}
 
-	.htmlpp-delete-btn {
+	.htmlpp-delete-btn,
+	.htmlpp-edit-btn {
 		padding: 6px 8px;
 	}
 
 	.htmlpp-delete-btn span,
-	.htmlpp-delete-btn > *:not(svg) {
+	.htmlpp-delete-btn > *:not(svg),
+	.htmlpp-edit-btn span,
+	.htmlpp-edit-btn > *:not(svg) {
 		display: none;
 	}
 }

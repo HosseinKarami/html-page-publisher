@@ -6,6 +6,7 @@
  *  - Dropzone drag & drop for file inputs (falls back to native click)
  *  - Show selected filename inside dropzone
  *  - Reposition WP's Help / Screen Options DOM to sit below the hero
+ *  - Initialize WP's CodeMirror on the page editor textarea
  */
 ( function () {
 	'use strict';
@@ -14,7 +15,79 @@
 		relocateScreenMeta();
 		initCopyButtons();
 		initDropzones();
+		initCodeEditor();
+		initAssetReplace();
 	} );
+
+	/**
+	 * Submit the per-asset Replace form as soon as a file is chosen, so it's
+	 * a single click. A visually-hidden submit button is the no-JS fallback.
+	 */
+	function initAssetReplace() {
+		document.querySelectorAll( '.htmlpp-asset-replace input[type="file"]' ).forEach( function ( input ) {
+			input.addEventListener( 'change', function () {
+				if ( input.files && input.files.length ) {
+					var form = input.closest( 'form' );
+					if ( form ) {
+						if ( typeof form.requestSubmit === 'function' ) {
+							form.requestSubmit();
+						} else {
+							form.submit();
+						}
+					}
+				}
+			} );
+		} );
+	}
+
+	/**
+	 * Upgrade the editor textarea to WordPress' bundled CodeMirror.
+	 *
+	 * Settings are injected inline by HTMLPP_Admin::enqueue_assets() only on
+	 * the editor screen. If they're absent (other screens, or the user
+	 * disabled syntax highlighting in their profile) the plain textarea is
+	 * left untouched and still works.
+	 */
+	function initCodeEditor() {
+		var textarea = document.getElementById( 'htmlpp-code' );
+		if ( ! textarea || textarea.readOnly ) {
+			return;
+		}
+		if ( ! window.wp || ! window.wp.codeEditor || ! window.htmlppCodeEditorSettings ) {
+			return;
+		}
+
+		// CodeMirror freezes the tab on very large or minified-into-one-line
+		// HTML (common for AI exports). A plain <textarea> handles multi-MB
+		// content smoothly, so fall back to it past these thresholds.
+		var value = textarea.value;
+		var MAX_CHARS = 200000;          // ~200 KB total
+		var MAX_LINE = 5000;             // any single line this long = minified
+		var tooBig = value.length > MAX_CHARS || /[^\n]{5000,}/.test( value );
+
+		if ( tooBig ) {
+			var note = document.getElementById( 'htmlpp-bigfile-note' );
+			if ( note ) {
+				note.hidden = false;
+			}
+			return; // Leave the plain textarea in place.
+		}
+
+		var editor = window.wp.codeEditor.initialize( textarea, window.htmlppCodeEditorSettings );
+		if ( ! editor || ! editor.codemirror ) {
+			return;
+		}
+
+		// Flush CodeMirror's buffer back into the textarea before submit.
+		// CodeMirror.fromTextArea already hooks this, but doing it explicitly
+		// is harmless and guards against detached-form edge cases.
+		var form = textarea.closest( 'form' );
+		if ( form ) {
+			form.addEventListener( 'submit', function () {
+				editor.codemirror.save();
+			} );
+		}
+	}
 
 	/**
 	 * Move WP's #screen-meta (Help/Screen Options panel) and

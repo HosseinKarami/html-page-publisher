@@ -297,6 +297,41 @@ class HTMLPP_Admin {
 			HTMLPP_VERSION,
 			true
 		);
+
+		// On the editor screen, layer WordPress' built-in CodeMirror over
+		// the textarea. wp_enqueue_code_editor() loads its own assets and
+		// returns the settings (or false if the user disabled syntax
+		// highlighting in their profile — the plain textarea still works).
+		if ( $this->is_edit_request() && ! HTMLPP_Uploader::file_editing_disabled() ) {
+			$cm = wp_enqueue_code_editor(
+				array(
+					'type'       => 'text/html',
+					// Linting runs htmlhint on every keystroke and is the
+					// single worst offender for large AI-exported HTML.
+					'codemirror' => array(
+						'lineNumbers'      => true,
+						'indentUnit'       => 2,
+						'tabSize'          => 2,
+						// Wrapping a 100k-char minified line is catastrophic
+						// in CodeMirror; horizontal scroll is far cheaper.
+						'lineWrapping'     => false,
+						'matchBrackets'    => false,
+						'autoCloseBrackets' => false,
+						'autoCloseTags'    => false,
+						'matchTags'        => false,
+						'lint'             => false,
+						'gutters'          => array( 'CodeMirror-linenumbers' ),
+					),
+				)
+			);
+			if ( false !== $cm ) {
+				wp_add_inline_script(
+					'htmlpp-admin',
+					'window.htmlppCodeEditorSettings = ' . wp_json_encode( $cm ) . ';',
+					'before'
+				);
+			}
+		}
 	}
 
 	/**
@@ -341,6 +376,32 @@ class HTMLPP_Admin {
 			'html-page-publisher-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		// The editor is *not* a separate menu page. It's served by the
+		// top-level page via ?action=edit so it reuses that page's
+		// already-registered capability — registering a hidden submenu and
+		// remove_submenu_page()'ing it breaks WP's user_can_access_admin_page().
+	}
+
+	/**
+	 * Whether the current request targets the contextual editor screen.
+	 *
+	 * @return bool
+	 */
+	private function is_edit_request() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Screen selector only; mutations are nonce-verified in HTMLPP_Uploader.
+		if ( isset( $_GET['action'] ) && 'edit' === sanitize_key( wp_unslash( $_GET['action'] ) ) ) {
+			return true;
+		}
+		// After a save/restore/asset round-trip the action arrives via POST.
+		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete' ) as $htmlpp_key ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Screen selector only; verified in the matching HTMLPP_Uploader handler.
+			if ( isset( $_POST[ $htmlpp_key ] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -352,7 +413,13 @@ class HTMLPP_Admin {
 		}
 
 		$notice = HTMLPP_Uploader::handle_request();
-		$pages  = HTMLPP_Storage::list_pages();
+
+		if ( $this->is_edit_request() ) {
+			$this->render_edit_screen( $notice );
+			return;
+		}
+
+		$pages = HTMLPP_Storage::list_pages();
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-upload.php';
 	}
@@ -366,5 +433,62 @@ class HTMLPP_Admin {
 		}
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-settings.php';
+	}
+
+	/**
+	 * Render the per-page HTML editor screen.
+	 *
+	 * Invoked from render_upload_page() (the top-level page), so the
+	 * capability has already been checked and the save/restore submission
+	 * already processed into $notice.
+	 *
+	 * @param array|null $notice Notice from HTMLPP_Uploader::handle_request().
+	 */
+	private function render_edit_screen( $notice ) {
+		// Determine which page we're editing. The slug arrives via GET when
+		// arriving from the list, or via POST after a save/restore round-trip.
+		// The matching HTMLPP_Uploader handler verifies the nonce before any
+		// mutation; here the value is only a read-only screen selector.
+		$slug = '';
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen selector; verified in HTMLPP_Uploader.
+		if ( isset( $_GET['slug'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen selector; verified in HTMLPP_Uploader.
+			$slug = HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_GET['slug'] ) ) );
+		}
+
+		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete' ) as $htmlpp_key ) {
+			if ( '' !== $slug ) {
+				break;
+			}
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Screen selector only; verified in the matching HTMLPP_Uploader handler.
+			if ( isset( $_POST[ $htmlpp_key ] ) ) {
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Screen selector only; verified in the matching HTMLPP_Uploader handler.
+				$slug = HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_POST[ $htmlpp_key ] ) ) );
+			}
+		}
+
+		$content = '' !== $slug ? HTMLPP_Storage::read_page( $slug ) : false;
+
+		// Unknown / missing page: fall back to the list with an error notice.
+		if ( '' === $slug || false === $content ) {
+			if ( ! $notice ) {
+				$notice = array(
+					'type'    => 'error',
+					'message' => __( 'That page could not be found.', 'html-page-publisher' ),
+				);
+			}
+			$pages = HTMLPP_Storage::list_pages();
+			include HTMLPP_PLUGIN_DIR . 'views/admin-upload.php';
+			return;
+		}
+
+		$editing_disabled = HTMLPP_Uploader::file_editing_disabled();
+		$backups          = HTMLPP_Storage::list_backups( $slug );
+		$assets           = HTMLPP_Storage::list_assets( $slug );
+		$page_url         = HTMLPP_Storage::public_page_url( $slug );
+		$list_url         = admin_url( 'admin.php?page=html-page-publisher' );
+
+		include HTMLPP_PLUGIN_DIR . 'views/admin-edit.php';
 	}
 }

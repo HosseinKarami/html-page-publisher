@@ -27,6 +27,7 @@ tests
 bin
 docs
 .wordpress-org
+wporg-assets
 README.md
 CHANGELOG.md
 CONTRIBUTING.md

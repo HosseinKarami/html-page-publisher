@@ -5,7 +5,7 @@ Tags: html, landing page, ai, claude, chatgpt
 Requires at least: 5.9
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,9 @@ HTML Page Publisher lets you drop a standalone HTML file into WordPress and have
 **Key features**
 
 * Simple admin UI: upload one HTML file + its image assets, get a public URL
+* **Built-in HTML editor**: edit a published page right in the dashboard with the native WordPress code editor (syntax highlighting), no FTP needed
+* **Version history**: every save snapshots the previous version; restore any earlier version with one click (restoring is itself undoable)
+* **Image management**: add, replace, or delete a page's images in place — Replace keeps the original filename so existing references keep working
 * **Automatic cleanup of AI-export wrappers**: strips runtime code some AI HTML export tools inject so the published page is pure static HTML
 * **Configurable URL prefix**: default `/pages/your-slug/`, change to anything you like (e.g. `/resources/`, `/guides/`)
 * **Optional subdomain routing**: point `sales.example.com` at your site and pages appear at `sales.example.com/your-slug/`
@@ -43,7 +46,15 @@ HTML Page Publisher lets you drop a standalone HTML file into WordPress and have
 
 = Where are uploaded pages stored? =
 
-In `wp-content/uploads/html-page-publisher/<slug>/`. Each page has its own directory containing an `index.html` and an `assets/` folder for images.
+In `wp-content/uploads/html-page-publisher/<slug>/`. Each page has its own directory containing an `index.html` and an `assets/` folder for images. Version-history snapshots are kept separately in `wp-content/uploads/html-page-publisher-backups/<slug>/`.
+
+= How do I edit a page or change its images after publishing? =
+
+Open **HTML Pages**, click **Edit** on a page. You get the native WordPress code editor for the HTML, a Version History panel to restore earlier saves, and an Images &amp; Assets panel to add, replace, or delete the page's images without re-uploading the HTML. Use **Replace** (rather than uploading a new file) to swap an image while keeping the same filename, so existing `assets/...` references in your HTML keep working.
+
+= Can I lock down editing? =
+
+Yes. The standard `DISALLOW_FILE_EDIT` (or `DISALLOW_FILE_MODS`) constant in `wp-config.php` disables in-dashboard HTML editing and image changes here too, the same way it disables WordPress's core file editor.
 
 = How do I use the subdomain feature? =
 
@@ -60,13 +71,21 @@ Only users with the `manage_options` capability (administrators by default) can 
 
 = Will uninstalling delete my pages? =
 
-No. Uninstalling removes the plugin's settings but leaves the uploaded pages in `wp-content/uploads/html-page-publisher/` intact. Delete that folder manually if you want to remove them.
+No. Uninstalling removes the plugin's settings but leaves the uploaded pages in `wp-content/uploads/html-page-publisher/` (and their version-history snapshots in `wp-content/uploads/html-page-publisher-backups/`) intact. Delete those folders manually if you want to remove them.
 
 = Does this work with caching plugins or a CDN? =
 
 Pages are served via a direct PHP readfile that happens before WordPress's main query runs. Most page caches (WP Rocket, W3 Total Cache) won't cache these URLs by default. If you want them cached at the CDN edge, add the URL pattern to your caching rules. They're plain HTML with cache-friendly headers.
 
 == Changelog ==
+
+= 1.2.0 =
+* New: In-browser HTML editor for published pages, using the native WordPress code editor (syntax highlighting). No FTP required.
+* New: Version history — every save snapshots the previous version; restore any earlier version with one click, and restoring is itself undoable. Retention is filterable via `htmlpp_max_backups` (default 10).
+* New: Per-page image management — add, replace, or delete a page's images in place. Replace overwrites the original filename so existing HTML references keep working.
+* New: Editing respects `DISALLOW_FILE_EDIT` / `DISALLOW_FILE_MODS`, mirroring WordPress's core file-editor lockdown.
+* Improved: Large or minified files automatically fall back to a plain text editor so the browser stays responsive; the editor is a fixed-height box that scrolls internally.
+* Security: Editing and image actions reuse the existing nonce, `manage_options`, MIME-whitelist, and realpath path-traversal protections; backups are stored outside the publicly served directory.
 
 = 1.1.0 =
 * New: Branded admin footer with author attribution, support, and donate links.
@@ -92,6 +111,9 @@ Pages are served via a direct PHP readfile that happens before WordPress's main 
 2. Settings page for URL prefix and optional subdomain.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Edit published pages and manage their images right in the dashboard, with version history and one-click restore. Fully backward-compatible.
 
 = 1.1.0 =
 Branded admin footer, contextual Help tab, refreshed UI, and donate/support links. Fully backward-compatible.
