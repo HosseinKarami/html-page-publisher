@@ -56,6 +56,9 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 
 	<div class="htmlpp-content">
 
+		<?php // WordPress relocates admin_notices to just after .wp-header-end; keep them below the hero. ?>
+		<div class="wp-header-end"></div>
+
 		<?php settings_errors(); ?>
 
 		<div class="htmlpp-card">

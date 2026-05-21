@@ -62,6 +62,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<div class="htmlpp-content">
 
+		<?php // WordPress relocates admin_notices to just after .wp-header-end; keep them below the hero. ?>
+		<div class="wp-header-end"></div>
+
 		<?php if ( $notice ) : ?>
 			<?php $htmlpp_class = 'success' === $notice['type'] ? 'htmlpp-notice--success' : 'htmlpp-notice--error'; ?>
 			<div class="htmlpp-notice <?php echo esc_attr( $htmlpp_class ); ?>">

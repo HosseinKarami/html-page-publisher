@@ -3,9 +3,9 @@ Contributors: hosseinkarami
 Donate link: https://buymeacoffee.com/hosseinkarami?utm_source=wordpress.org&utm_medium=plugin-page&utm_campaign=donate&utm_content=readme-donate
 Tags: html, landing page, ai, claude, chatgpt
 Requires at least: 5.9
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,10 @@ No. Uninstalling removes the plugin's settings but leaves the uploaded pages in 
 Pages are served via a direct PHP readfile that happens before WordPress's main query runs. Most page caches (WP Rocket, W3 Total Cache) won't cache these URLs by default. If you want them cached at the CDN edge, add the URL pattern to your caching rules. They're plain HTML with cache-friendly headers.
 
 == Changelog ==
+
+= 1.2.1 =
+* Fixed: Other plugins' admin notices no longer render inside the plugin's hero header; they now appear below it via a `.wp-header-end` marker.
+* Compatibility: Tested up to WordPress 7.0.
 
 = 1.2.0 =
 * New: In-browser HTML editor for published pages, using the native WordPress code editor (syntax highlighting). No FTP required.

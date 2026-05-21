@@ -61,6 +61,9 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 
 	<div class="htmlpp-content">
 
+	<?php // WordPress relocates admin_notices to just after .wp-header-end; keep them below the hero. ?>
+	<div class="wp-header-end"></div>
+
 	<div class="htmlpp-stats">
 		<div class="htmlpp-stat">
 			<p class="htmlpp-stat__label"><?php esc_html_e( 'Published Pages', 'html-page-publisher' ); ?></p>
