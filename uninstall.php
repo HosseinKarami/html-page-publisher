@@ -15,9 +15,14 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 delete_option( 'htmlpp_settings' );
+delete_option( 'htmlpp_version' );
+delete_option( 'htmlpp_installed_at' );
+delete_option( 'htmlpp_publish_count' );
+delete_transient( 'htmlpp_protection_status' );
+delete_metadata( 'user', 0, 'htmlpp_review_notice', '', true );
 
-// Clean any transients we might add in future versions. Direct query is
-// appropriate during uninstall: runs once, caching is not relevant.
+// Clean per-user notice transients. Direct query is appropriate during
+// uninstall: runs once, caching is not relevant.
 global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query(

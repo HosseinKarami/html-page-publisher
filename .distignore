@@ -16,6 +16,9 @@ phpcs.xml
 phpcs.xml.dist
 phpunit.xml
 phpunit.xml.dist
+.phpunit.result.cache
+.phpcs-cache
+.php-cs-fixer.cache
 composer.json
 composer.lock
 package.json

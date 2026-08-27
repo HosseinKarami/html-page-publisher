@@ -2,10 +2,11 @@
 /**
  * Plugin Name:       HTML Page Publisher
  * Plugin URI:        https://github.com/HosseinKarami/html-page-publisher
- * Description:       Upload standalone HTML files (including AI-generated pages from Claude Design, ChatGPT, Gemini, v0, Bolt), edit them in place, manage their images, and publish as landing pages at a configurable URL. Optional subdomain routing.
- * Version:           1.2.1
+ * Description:       Publish standalone HTML files — Claude Design exports or any static HTML — as landing pages at a clean URL. Edit in place, manage images, keep version history. Optional subdomain routing.
+ * Version:           1.3.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
+ * Tested up to:      7.1
  * Author:            Hossein Karami
  * Author URI:        https://hosseinkarami.com
  * License:           GPL-2.0-or-later
@@ -20,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HTMLPP_VERSION', '1.2.1' );
+define( 'HTMLPP_VERSION', '1.3.0' );
 define( 'HTMLPP_PLUGIN_FILE', __FILE__ );
 define( 'HTMLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HTMLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -34,6 +35,15 @@ require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-uploader.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-renderer.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-admin.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-plugin.php';
+
+/**
+ * Accessor for the plugin singleton (for add-ons and themes).
+ *
+ * @return HTMLPP_Plugin
+ */
+function htmlpp() {
+	return HTMLPP_Plugin::get_instance();
+}
 
 register_activation_hook( __FILE__, array( 'HTMLPP_Plugin', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'HTMLPP_Plugin', 'deactivate' ) );

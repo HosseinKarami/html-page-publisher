@@ -16,6 +16,11 @@ $htmlpp_settings     = HTMLPP_Settings::get_settings();
 $htmlpp_example_url  = HTMLPP_Storage::public_page_url( 'your-slug' );
 $htmlpp_storage_path = ltrim( wp_make_link_relative( HTMLPP_Storage::base_url() ), '/' );
 $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' );
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only prefill after a failed upload; nothing is written.
+$htmlpp_prefill_slug = isset( $_GET['prefill_slug'] ) ? HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_GET['prefill_slug'] ) ) ) : '';
+$htmlpp_editing_off  = HTMLPP_Uploader::file_editing_disabled();
+$htmlpp_protection   = get_transient( HTMLPP_Storage::PROTECTION_TRANSIENT );
+$htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protection['status'] ) ? $htmlpp_protection['status'] : 'unknown';
 ?>
 <div class="wrap htmlpp-page">
 
@@ -28,7 +33,7 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 				<?php esc_html_e( 'HTML Page Publisher', 'html-page-publisher' ); ?>
 			</h1>
 			<p class="htmlpp-hero__subtitle">
-				<?php esc_html_e( 'Upload standalone HTML files and publish them as landing pages at a clean URL.', 'html-page-publisher' ); ?>
+				<?php esc_html_e( 'Upload standalone HTML files — Claude Design exports or any static HTML — and publish them as landing pages at a clean URL.', 'html-page-publisher' ); ?>
 			</p>
 		</div>
 		<div class="htmlpp-hero__actions">
@@ -76,6 +81,29 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 		<div class="htmlpp-stat">
 			<p class="htmlpp-stat__label"><?php esc_html_e( 'Storage Location', 'html-page-publisher' ); ?></p>
 			<p class="htmlpp-stat__hint" style="margin-top:6px;">/<?php echo esc_html( $htmlpp_storage_path ); ?>/</p>
+			<?php if ( 'blocked' === $htmlpp_protection ) : ?>
+				<p class="htmlpp-stat__hint"><?php esc_html_e( 'Direct access blocked (verified).', 'html-page-publisher' ); ?></p>
+			<?php elseif ( 'open' === $htmlpp_protection ) : ?>
+				<p class="htmlpp-stat__hint htmlpp-stat__hint--warning">
+					<?php
+					printf(
+						/* translators: %s: link to the Settings screen */
+						esc_html__( 'Direct access is open — see %s.', 'html-page-publisher' ),
+						'<a href="' . esc_url( $htmlpp_settings_url ) . '">' . esc_html__( 'Settings', 'html-page-publisher' ) . '</a>'
+					);
+					?>
+				</p>
+			<?php else : ?>
+				<p class="htmlpp-stat__hint">
+					<?php
+					printf(
+						/* translators: %s: link to the Settings screen */
+						esc_html__( 'Served at the public URL; check protection in %s.', 'html-page-publisher' ),
+						'<a href="' . esc_url( $htmlpp_settings_url ) . '">' . esc_html__( 'Settings', 'html-page-publisher' ) . '</a>'
+					);
+					?>
+				</p>
+			<?php endif; ?>
 		</div>
 	</div>
 
@@ -129,6 +157,7 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 								name="page_slug"
 								required
 								pattern="[a-z0-9\-]+"
+								value="<?php echo esc_attr( $htmlpp_prefill_slug ); ?>"
 								placeholder="lead-gen-program" />
 						</div>
 						<p class="htmlpp-field__help">
@@ -159,7 +188,7 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 							</span>
 						</div>
 						<p class="htmlpp-field__help">
-							<?php esc_html_e( 'Any standalone HTML file. AI export runtime wrappers are automatically stripped.', 'html-page-publisher' ); ?>
+							<?php esc_html_e( 'Any standalone HTML file. Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ); ?>
 						</p>
 					</div>
 
@@ -182,6 +211,22 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 						<p class="htmlpp-field__help">
 							<?php esc_html_e( 'Uploaded to the assets/ folder. Filenames must match references in the HTML.', 'html-page-publisher' ); ?>
 						</p>
+					</div>
+
+					<div class="htmlpp-field">
+						<?php if ( $htmlpp_editing_off ) : ?>
+							<p class="htmlpp-field__help">
+								<?php esc_html_e( 'Replacing an existing page is disabled by the DISALLOW_FILE_EDIT / DISALLOW_FILE_MODS constant. Choose a slug that is not published yet.', 'html-page-publisher' ); ?>
+							</p>
+						<?php else : ?>
+							<label class="htmlpp-checkbox">
+								<input type="checkbox" name="htmlpp_overwrite" value="1" aria-describedby="htmlpp-overwrite-help" />
+								<span><?php esc_html_e( 'Replace the existing page', 'html-page-publisher' ); ?></span>
+							</label>
+							<p class="htmlpp-field__help" id="htmlpp-overwrite-help">
+								<?php esc_html_e( 'Only applies if this slug is already published. Off by default so a typo can’t overwrite a live page; when on, the current version is kept in the page’s version history.', 'html-page-publisher' ); ?>
+							</p>
+						<?php endif; ?>
 					</div>
 
 					<div class="htmlpp-form-footer">
@@ -237,6 +282,9 @@ $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' 
 										<a href="<?php echo esc_url( $htmlpp_page['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="htmlpp-slug">
 											<?php echo esc_html( $htmlpp_page['slug'] ); ?>
 										</a>
+										<?php if ( ! empty( $htmlpp_page['title'] ) ) : ?>
+											<span class="htmlpp-page-title" title="<?php echo esc_attr( $htmlpp_page['title'] ); ?>"><?php echo esc_html( $htmlpp_page['title'] ); ?></span>
+										<?php endif; ?>
 										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_page['url'] ); ?>">
 											<span class="htmlpp-url-pill__text"><?php echo esc_html( $htmlpp_page['url'] ); ?></span>
 											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $htmlpp_page['url'] ); ?>" aria-label="<?php esc_attr_e( 'Copy URL', 'html-page-publisher' ); ?>">

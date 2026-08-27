@@ -1,0 +1,44 @@
+{
+	"$schema": "https://playground.wordpress.net/blueprint-schema.json",
+	"landingPage": "/wp-admin/admin.php?page=html-page-publisher",
+	"preferredVersions": {
+		"php": "8.2",
+		"wp": "latest"
+	},
+	"phpExtensionBundles": [ "kitchen-sink" ],
+	"features": {
+		"networking": true
+	},
+	"steps": [
+		{
+			"step": "login",
+			"username": "admin",
+			"password": "password"
+		},
+		{
+			"step": "installPlugin",
+			"pluginData": {
+				"resource": "wordpress.org/plugins",
+				"slug": "html-page-publisher"
+			},
+			"options": {
+				"activate": true
+			}
+		},
+		{
+			"step": "setSiteOptions",
+			"options": {
+				"permalink_structure": "/%postname%/"
+			}
+		},
+		{
+			"step": "mkdir",
+			"path": "/wordpress/wp-content/uploads/html-page-publisher/welcome/assets"
+		},
+		{
+			"step": "writeFile",
+			"path": "/wordpress/wp-content/uploads/html-page-publisher/welcome/index.html",
+			"data": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Welcome — HTML Page Publisher demo</title>\n  <style>\n    body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }\n    main { max-width: 680px; margin: 0 auto; padding: 96px 24px; text-align: center; }\n    h1 { font-size: 44px; letter-spacing: -0.02em; margin: 0 0 16px; }\n    p { font-size: 18px; color: #94a3b8; line-height: 1.6; }\n    .btn { display: inline-block; margin-top: 24px; padding: 12px 22px; background: #6366f1; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 600; }\n  </style>\n</head>\n<body>\n  <main>\n    <h1>This page is a plain HTML file.</h1>\n    <p>It was uploaded with HTML Page Publisher and is served at a clean URL on this WordPress site — no theme, no page builder. Edit it from <strong>HTML Pages → Edit</strong> in wp-admin.</p>\n    <a class=\"btn\" href=\"/wp-admin/admin.php?page=html-page-publisher\">Open the dashboard</a>\n  </main>\n</body>\n</html>\n"
+		}
+	]
+}

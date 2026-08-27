@@ -44,8 +44,9 @@ rsync -a ./ "${BUILD_DIR}/${PLUGIN_SLUG}/" \
 # Make sure no hidden files snuck in (WP.org rejects them).
 HIDDEN=$(find "${BUILD_DIR}/${PLUGIN_SLUG}" -name '.*' -not -name '.' -not -name '..' 2>/dev/null || true)
 if [[ -n "${HIDDEN}" ]]; then
-  echo "WARNING: hidden files found in build — WordPress.org will flag these:" >&2
+  echo "ERROR: hidden files found in build — add them to .distignore:" >&2
   echo "${HIDDEN}" >&2
+  exit 1
 fi
 
 # Zip it up — WP.org requires the plugin folder to be the top level.

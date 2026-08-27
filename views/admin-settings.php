@@ -30,7 +30,7 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 		<div class="htmlpp-hero__body">
 			<h1 class="htmlpp-hero__title"><?php esc_html_e( 'Settings', 'html-page-publisher' ); ?></h1>
 			<p class="htmlpp-hero__subtitle">
-				<?php esc_html_e( 'Configure URL structure and optional subdomain routing.', 'html-page-publisher' ); ?>
+				<?php esc_html_e( 'URL structure, optional subdomain routing, and storage protection.', 'html-page-publisher' ); ?>
 			</p>
 		</div>
 		<div class="htmlpp-hero__actions">
@@ -60,6 +60,68 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 		<div class="wp-header-end"></div>
 
 		<?php settings_errors(); ?>
+
+		<?php
+		$htmlpp_status = isset( $protection['status'] ) ? $protection['status'] : 'unknown';
+		$htmlpp_code   = isset( $protection['code'] ) ? (int) $protection['code'] : 0;
+		$htmlpp_nginx  = 'location ~* ^' . wp_parse_url( HTMLPP_Storage::base_url(), PHP_URL_PATH ) . "(-backups)?/ {\n\tdeny all;\n}";
+		?>
+		<div class="htmlpp-card htmlpp-protection htmlpp-protection--<?php echo esc_attr( $htmlpp_status ); ?>">
+			<div class="htmlpp-card__header">
+				<div>
+					<h2 class="htmlpp-card__title"><?php esc_html_e( 'Storage protection', 'html-page-publisher' ); ?></h2>
+					<p class="htmlpp-card__subtitle"><?php esc_html_e( 'Pages should only be reachable at their public URL, never directly from the uploads folder.', 'html-page-publisher' ); ?></p>
+				</div>
+				<a href="<?php echo esc_url( $recheck_url ); ?>" class="htmlpp-button htmlpp-button-ghost"><?php esc_html_e( 'Re-check', 'html-page-publisher' ); ?></a>
+			</div>
+			<div class="htmlpp-card__body">
+				<?php if ( 'blocked' === $htmlpp_status ) : ?>
+					<p class="htmlpp-protection__status">
+						<strong><?php esc_html_e( 'Direct access is blocked.', 'html-page-publisher' ); ?></strong>
+						<?php
+						printf(
+							/* translators: %d: HTTP status code */
+							esc_html__( 'Requests to the uploads folder return HTTP %d.', 'html-page-publisher' ),
+							(int) $htmlpp_code
+						);
+						?>
+					</p>
+				<?php elseif ( 'open' === $htmlpp_status ) : ?>
+					<p class="htmlpp-protection__status">
+						<strong><?php esc_html_e( 'Direct access is open.', 'html-page-publisher' ); ?></strong>
+						<?php esc_html_e( 'Your web server ignores the .htaccess rules the plugin writes (this is normal on nginx). Pages still work at their public URL, but the raw files can also be fetched from the uploads folder, bypassing the plugin’s caching and any access rules. Add this to your nginx server block and reload nginx:', 'html-page-publisher' ); ?>
+					</p>
+					<pre class="htmlpp-code-block"><?php echo esc_html( $htmlpp_nginx ); ?></pre>
+				<?php else : ?>
+					<p class="htmlpp-protection__status">
+						<strong><?php esc_html_e( 'Could not verify.', 'html-page-publisher' ); ?></strong>
+						<?php
+						if ( 0 === $htmlpp_code ) {
+							esc_html_e( 'The site could not reach its own uploads URL (loopback requests appear to be blocked on this host).', 'html-page-publisher' );
+						} elseif ( 401 === $htmlpp_code ) {
+							esc_html_e( 'The uploads URL is behind HTTP authentication (HTTP 401), so the plugin’s own rule could not be observed.', 'html-page-publisher' );
+						} elseif ( 404 === $htmlpp_code ) {
+							esc_html_e( 'The uploads URL returned HTTP 404 and a control file could not be reached either, so the uploads URL may not point at this site’s uploads folder (custom upload path, CDN or offload plugin).', 'html-page-publisher' );
+						} elseif ( $htmlpp_code >= 300 && $htmlpp_code < 400 ) {
+							printf(
+								/* translators: %d: HTTP status code */
+								esc_html__( 'The uploads URL redirected (HTTP %d), so the plugin could not observe its own rule.', 'html-page-publisher' ),
+								(int) $htmlpp_code
+							);
+						} else {
+							printf(
+								/* translators: %d: HTTP status code */
+								esc_html__( 'The uploads URL returned HTTP %d.', 'html-page-publisher' ),
+								(int) $htmlpp_code
+							);
+						}
+						?>
+						<?php esc_html_e( 'On Apache and LiteSpeed the plugin’s .htaccess rules apply automatically; on nginx add this to your server block:', 'html-page-publisher' ); ?>
+					</p>
+					<pre class="htmlpp-code-block"><?php echo esc_html( $htmlpp_nginx ); ?></pre>
+				<?php endif; ?>
+			</div>
+		</div>
 
 		<div class="htmlpp-card">
 			<div class="htmlpp-card__body">

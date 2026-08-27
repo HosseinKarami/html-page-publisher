@@ -9,6 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Settings API registration and sanitization.
+ */
 class HTMLPP_Settings {
 
 	const OPTION = 'htmlpp_settings';
@@ -30,7 +33,7 @@ class HTMLPP_Settings {
 			'url_prefix' => 'pages',
 			'subdomain'  => '',
 		);
-		$saved = get_option( self::OPTION, array() );
+		$saved    = get_option( self::OPTION, array() );
 		return wp_parse_args( (array) $saved, $defaults );
 	}
 

@@ -17,7 +17,48 @@
 		initDropzones();
 		initCodeEditor();
 		initAssetReplace();
+		initReviewNotice();
 	} );
+
+	/**
+	 * When the review button is clicked, also record "done" in the
+	 * background so the notice is not shown again.
+	 */
+	function initReviewNotice() {
+		function ping( url ) {
+			if ( url && window.fetch ) {
+				fetch( url, { credentials: 'same-origin', redirect: 'manual' } ).catch( function () {} );
+			}
+		}
+		function removeNotice( notice ) {
+			if ( ! notice ) {
+				return;
+			}
+			// Move focus somewhere sensible before the focused element goes away.
+			var heading = document.querySelector( '.htmlpp-hero__title' );
+			if ( heading ) {
+				heading.setAttribute( 'tabindex', '-1' );
+				heading.focus();
+			}
+			notice.remove();
+		}
+		document.querySelectorAll( '[data-htmlpp-dismiss]' ).forEach( function ( link ) {
+			link.addEventListener( 'click', function () {
+				ping( link.getAttribute( 'data-htmlpp-dismiss' ) );
+				removeNotice( link.closest( '.htmlpp-review-notice' ) );
+			} );
+		} );
+		// WordPress injects the "X" (.notice-dismiss) after DOMContentLoaded,
+		// so listen by delegation. Treat the X as "maybe later".
+		document.addEventListener( 'click', function ( e ) {
+			var btn = e.target.closest ? e.target.closest( '.htmlpp-review-notice .notice-dismiss' ) : null;
+			if ( ! btn ) {
+				return;
+			}
+			var notice = btn.closest( '.htmlpp-review-notice' );
+			ping( notice ? notice.getAttribute( 'data-htmlpp-later' ) : '' );
+		} );
+	}
 
 	/**
 	 * Submit the per-asset Replace form as soon as a file is chosen, so it's
@@ -70,6 +111,10 @@
 			if ( note ) {
 				note.hidden = false;
 			}
+			var initial = value;
+			installUnsavedGuard( textarea, function () {
+				return textarea.value !== initial;
+			} );
 			return; // Leave the plain textarea in place.
 		}
 
@@ -77,6 +122,11 @@
 		if ( ! editor || ! editor.codemirror ) {
 			return;
 		}
+
+		editor.codemirror.markClean();
+		installUnsavedGuard( textarea, function () {
+			return ! editor.codemirror.isClean();
+		} );
 
 		// Flush CodeMirror's buffer back into the textarea before submit.
 		// CodeMirror.fromTextArea already hooks this, but doing it explicitly
@@ -87,6 +137,31 @@
 				editor.codemirror.save();
 			} );
 		}
+	}
+
+	/**
+	 * Warn before leaving the editor with unsaved changes. Skipped while the
+	 * form itself is submitting.
+	 *
+	 * @param {HTMLTextAreaElement} textarea Editor textarea.
+	 * @param {Function}            isDirty  Returns true when there are unsaved edits.
+	 */
+	function installUnsavedGuard( textarea, isDirty ) {
+		var form = textarea.closest( 'form' );
+		var submitting = false;
+		if ( form ) {
+			form.addEventListener( 'submit', function () {
+				submitting = true;
+			} );
+		}
+		window.addEventListener( 'beforeunload', function ( e ) {
+			if ( submitting || ! isDirty() ) {
+				return;
+			}
+			e.preventDefault();
+			// Browsers show their own generic message; the string is a fallback.
+			e.returnValue = ( window.htmlppL10n && window.htmlppL10n.unsaved ) || '';
+		} );
 	}
 
 	/**
@@ -180,12 +255,14 @@
 					if ( titleEl ) titleEl.textContent = input.files[0].name;
 					if ( hintEl ) hintEl.textContent = formatBytes( input.files[0].size );
 				} else {
-					if ( titleEl ) titleEl.textContent = input.files.length + ' files selected';
+					var l10n = window.htmlppL10n || {};
+					var filesLabel = ( l10n.filesSelected || '%d files selected' ).replace( '%d', input.files.length );
+					if ( titleEl ) titleEl.textContent = filesLabel;
 					var total = 0;
 					for ( var i = 0; i < input.files.length; i++ ) {
 						total += input.files[i].size;
 					}
-					if ( hintEl ) hintEl.textContent = formatBytes( total ) + ' total';
+					if ( hintEl ) hintEl.textContent = ( l10n.total || '%s total' ).replace( '%s', formatBytes( total ) );
 				}
 			}
 

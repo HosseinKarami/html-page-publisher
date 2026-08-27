@@ -115,7 +115,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="htmlpp-card__header">
 					<div>
 						<h2 class="htmlpp-card__title"><?php esc_html_e( 'HTML Source', 'html-page-publisher' ); ?></h2>
-						<p class="htmlpp-card__subtitle"><?php esc_html_e( 'Edits are saved to index.html. AI export runtime wrappers are stripped on save.', 'html-page-publisher' ); ?></p>
+						<p class="htmlpp-card__subtitle"><?php esc_html_e( 'Edits are saved to index.html. Claude Design’s export-time runtime wrappers are stripped on save.', 'html-page-publisher' ); ?></p>
 					</div>
 				</div>
 				<div class="htmlpp-card__body">
