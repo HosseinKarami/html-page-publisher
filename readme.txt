@@ -5,7 +5,7 @@ Tags: html, landing page, claude design, ai, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,10 +19,15 @@ It is built for the "I made this page with an AI tool, now how do I get it onto 
 
 **Key features**
 
-* **Upload and publish**: one HTML file plus its images, and you get a public URL
+* **Upload and publish**: one HTML file plus its images — or a whole ZIP bundle (index.html + css/js/images/fonts) — and you get a public URL
+* **Drafts and previews**: save a page as a draft, share a preview link that works without logging in, publish when ready
+* **Custom paths and front page**: serve a page at `/promo/` instead of `/pages/promo/`, or make it the site's front page
+* **Global snippets**: add GA4/GTM/pixel, fonts or a consent banner to every page from Settings (pages can opt out)
+* **SEO**: pages are listed in the WordPress XML sitemap, can be marked noindex, and get a canonical link
+* **Rename and duplicate**: change a slug (the old URL redirects) or copy a page as a new draft
 * **Built-in HTML editor**: edit a published page in the dashboard with the native WordPress code editor (syntax highlighting)
 * **Version history**: every save keeps the previous version; restore any earlier version with one click (restoring is itself undoable)
-* **Image management**: add, replace, or delete a page's images in place — Replace keeps the original filename so existing references keep working
+* **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
 * **Clean Claude Design exports**: strips the export-time runtime wrappers Claude Design adds so the published page is pure static HTML; add rules for other tools with the `htmlpp_sanitizer_rules` filter
 * **Configurable URL prefix**: default `/pages/your-slug/`, change to anything you like (e.g. `/resources/`, `/guides/`)
 * **Optional subdomain routing**: point `sales.example.com` at your site and pages appear at `sales.example.com/your-slug/`
@@ -51,6 +56,26 @@ HTML Page Publisher is an independent project. It is not affiliated with, endors
 
 == Frequently Asked Questions ==
 
+= Can I upload a whole folder (CSS, JS, images) at once? =
+
+Yes. Zip the exported folder — `index.html` at the top level (or inside a single folder), assets in subfolders — and upload the `.zip` instead of an `.html` file. Files keep their relative paths, so `css/site.css` and `img/hero.png` references work unchanged. Executable files (`.php` etc.), anything outside the allowed types, and any file containing PHP code are skipped and reported. ZIP import needs PHP's ZipArchive extension, which nearly every host provides; if yours does not, upload the HTML and its files separately.
+
+= How do drafts and previews work? =
+
+Tick **Save as draft** when uploading a new page, or switch a page to **Draft** in its Page Settings. Drafts return a 404 to visitors and search engines; administrators can view them, and the **Preview** button gives you a link with a secret token you can share with anyone (use **Reset preview link** to revoke it). Publish from Page Settings when you are happy.
+
+= Can I serve a page at the site root or a custom path? =
+
+Yes. In a page's settings, set **Custom path** to `promo` to serve it at `https://example.com/promo/`, or to `/` to make it the front page. If you later change the path, the old one redirects to the page. Paths that belong to existing WordPress pages or posts, core routes, category/tag/author bases and post-type archives are refused; other rewrite rules (e.g. from other plugins) are not checked, so choose a path you know is free. The front page keeps working for WordPress's own query-string routes (search, previews, REST, feeds).
+
+= How do I add Google Analytics, GTM or a pixel to every page? =
+
+**HTML Pages → Settings → Global snippets**. Paste the tags into the head or footer snippet; they are inserted into every published page when it is served (so re-uploading a page never loses them). Pages can opt out individually.
+
+= Are pages in my XML sitemap? =
+
+Published pages that are not marked noindex are listed at `/wp-sitemap-htmlpp-1.xml`, which is linked from WordPress's built-in sitemap index. SEO plugins such as Yoast or Rank Math replace the core sitemap with their own; in that case use the `htmlpp_sitemap_entries` filter (or `HTMLPP_Sitemap::entries()`) to feed their sitemap.
+
 = Which AI tools does it work with? =
 
 Any tool that gives you a single, self-contained HTML file. Claude Design's "Export as standalone HTML" is supported directly, including automatic removal of the runtime wrappers it injects. Pages from ChatGPT, Gemini, or written by hand work as-is. Tools such as v0 and Bolt export React/Vite projects rather than static HTML, so you need to build or export those to plain HTML first.
@@ -63,9 +88,9 @@ In `wp-content/uploads/html-page-publisher/<slug>/`. Each page has its own direc
 
 nginx ignores `.htaccess`. Pages still work at their public URL, but the raw files could also be fetched from the uploads folder. **HTML Pages → Settings** shows whether direct access is blocked and gives you a two-line `location` block to add to your nginx server configuration.
 
-= How do I edit a page or change its images after publishing? =
+= How do I edit a page or change its files after publishing? =
 
-Open **HTML Pages**, click **Edit** on a page. You get the native WordPress code editor for the HTML, a Version History panel to restore earlier saves, and an Images &amp; Assets panel to add, replace, or delete the page's images without re-uploading the HTML. Use **Replace** (rather than uploading a new file) to swap an image while keeping the same filename, so existing `assets/...` references in your HTML keep working.
+Open **HTML Pages**, click **Edit** on a page. You get the native WordPress code editor for the HTML, a Version History panel to restore earlier saves, and a Files &amp; Assets panel to add, replace, or delete the page's images, CSS, JS, fonts and other files without re-uploading the HTML. Use **Replace** (rather than uploading a new file) to swap a file while keeping the same name, so existing references in your HTML keep working.
 
 = What happens if I upload a slug that already exists? =
 
@@ -73,7 +98,7 @@ The upload is refused with a message explaining why, unless you tick **Replace t
 
 = Can I lock down editing? =
 
-Yes. The standard `DISALLOW_FILE_EDIT` (or `DISALLOW_FILE_MODS`) constant in `wp-config.php` disables in-dashboard HTML editing, image changes and replacing existing pages, the same way it disables WordPress's core file editor.
+Yes. The standard `DISALLOW_FILE_EDIT` (or `DISALLOW_FILE_MODS`) constant in `wp-config.php` disables in-dashboard HTML editing, file changes, renaming and replacing existing pages, the same way it disables WordPress's core file editor. Uploading new pages, duplicating and deleting remain available.
 
 = How do I use the subdomain feature? =
 
@@ -90,7 +115,7 @@ Only users with the `manage_options` capability (administrators by default) can 
 
 = Will uninstalling delete my pages? =
 
-No. Uninstalling removes the plugin's settings but leaves the uploaded pages in `wp-content/uploads/html-page-publisher/` (and their version-history snapshots in `wp-content/uploads/html-page-publisher-backups/`) intact. Delete those folders manually if you want to remove them.
+No. Uninstalling removes the plugin's settings but leaves the uploaded pages in `wp-content/uploads/html-page-publisher/` (and their version-history snapshots in `wp-content/uploads/html-page-publisher-backups/`) intact, together with their metadata (draft status, custom paths, redirects) so a reinstall does not publish former drafts. Delete those folders and the `htmlpp_pages`, `htmlpp_redirects` and `htmlpp_path_redirects` options manually if you want everything gone.
 
 = Does this work with caching plugins or a CDN? =
 
@@ -108,12 +133,27 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 
 == Screenshots ==
 
-1. Upload a new page and see everything you have published, with each page's title and public URL.
+1. Upload a new page or ZIP bundle and see everything you have published, with each page's title, status and public URL.
 2. Edit a published page in the dashboard with the native WordPress code editor.
-3. Manage a page's images in place and restore any earlier version from Version History.
-4. Settings: URL prefix, optional subdomain, and a live check that storage protection is active.
+3. Files &amp; Assets: every file of an imported bundle — images, CSS, JS, fonts — with replace and delete in place.
+4. Settings: URL prefix, optional subdomain, global snippets, and a live check that storage protection is active.
+5. Page settings: draft/published, custom path or front page, noindex, rename and duplicate.
 
 == Changelog ==
+
+= 1.4.0 =
+* New: Upload a ZIP bundle (index.html + css/js/images/fonts in subfolders). Files keep their relative paths; executables are skipped and reported.
+* New: Any file type a page needs can be added in the Files & Assets panel — CSS, JS, fonts, video, PDF — not only images.
+* New: Drafts with shareable preview links (secret token; no login needed). Save as draft on upload or switch status in Page settings.
+* New: Custom paths — serve a page at `/promo/` or as the site's front page. Paths used by existing WordPress content are refused.
+* New: Global head/footer snippets (GA4, GTM, pixels, fonts, consent banners) injected into every published page at serve time, with a per-page opt-out.
+* New: SEO — pages are listed in the WordPress XML sitemap, can be marked noindex (X-Robots-Tag + meta), and get a canonical link when they lack one (toggle in Settings).
+* New: Rename a page's slug (the old URL redirects with a 301) and duplicate a page as a new draft.
+* New: Pages list shows Draft / noindex badges and has a search filter.
+* New: Changing a page's custom path keeps the old path redirecting; preview links can be reset; the front page mapping leaves WordPress's own query-string routes (search, previews, REST, feeds) alone.
+* New: Hooks — `htmlpp_page_meta`, `htmlpp_page_meta_defaults`, `htmlpp_page_meta_updated`, `htmlpp_page_status_changed`, `htmlpp_page_created`, `htmlpp_page_renamed`, `htmlpp_page_copied`, `htmlpp_page_duplicated`, `htmlpp_page_html`, `htmlpp_can_preview`, `htmlpp_zip_imported`, `htmlpp_assets_uploaded`, `htmlpp_asset_replaced`, `htmlpp_asset_deleted`, `htmlpp_sitemap_entries`, `htmlpp_reserved_paths`, `htmlpp_path_collides`, `htmlpp_home_reserved_query_vars`, `htmlpp_zip_allowed_extensions`, `htmlpp_zip_max_bytes`, `htmlpp_zip_max_files`.
+* Security: ZIP entries are streamed under a size cap, names with executable intermediate extensions are refused, and every entry (not only text files) is scanned for PHP code. Blocked extensions now cover php3–php8, phtm, phps, phar, inc and shtml.
+* Improved: Deleting a page also removes redirects that pointed at it; uninstall keeps page metadata so a reinstall never publishes former drafts.
 
 = 1.3.0 =
 * Security: Pages are now only reachable at their public URL. The storage and version-history folders get an `.htaccess` that denies direct access, and Settings shows whether your web server honours it (with an nginx snippet if it does not).
@@ -166,6 +206,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+ZIP bundles, drafts with preview links, custom paths and front-page mapping, global analytics snippets, sitemap/noindex, rename and duplicate. Existing pages keep their URLs.
 
 = 1.3.0 =
 Storage folders are now protected from direct access, pages get real caching headers and a canonical URL. Existing pages keep their URLs. One behaviour change: re-uploading to an existing slug now requires ticking "Replace the existing page" instead of overwriting silently.

@@ -30,7 +30,7 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 		<div class="htmlpp-hero__body">
 			<h1 class="htmlpp-hero__title"><?php esc_html_e( 'Settings', 'html-page-publisher' ); ?></h1>
 			<p class="htmlpp-hero__subtitle">
-				<?php esc_html_e( 'URL structure, optional subdomain routing, and storage protection.', 'html-page-publisher' ); ?>
+				<?php esc_html_e( 'URL structure, subdomain routing, global snippets, SEO, and storage protection.', 'html-page-publisher' ); ?>
 			</p>
 		</div>
 		<div class="htmlpp-hero__actions">

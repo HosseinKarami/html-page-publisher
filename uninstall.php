@@ -18,6 +18,10 @@ delete_option( 'htmlpp_settings' );
 delete_option( 'htmlpp_version' );
 delete_option( 'htmlpp_installed_at' );
 delete_option( 'htmlpp_publish_count' );
+// Page metadata (draft status, custom paths, redirects) is content, like the
+// page files themselves, and is deliberately kept so a reinstall does not
+// publish former drafts. Delete the htmlpp_pages, htmlpp_redirects and
+// htmlpp_path_redirects options manually if you want them gone.
 delete_transient( 'htmlpp_protection_status' );
 delete_metadata( 'user', 0, 'htmlpp_review_notice', '', true );
 

@@ -30,8 +30,11 @@ class HTMLPP_Settings {
 	 */
 	public static function get_settings() {
 		$defaults = array(
-			'url_prefix' => 'pages',
-			'subdomain'  => '',
+			'url_prefix'     => 'pages',
+			'subdomain'      => '',
+			'head_snippet'   => '',
+			'footer_snippet' => '',
+			'canonical'      => true,
 		);
 		$saved    = get_option( self::OPTION, array() );
 		return wp_parse_args( (array) $saved, $defaults );
@@ -76,6 +79,92 @@ class HTMLPP_Settings {
 			'htmlpp_settings',
 			'htmlpp_url_section'
 		);
+
+		add_settings_section(
+			'htmlpp_snippets_section',
+			__( 'Global snippets & SEO', 'html-page-publisher' ),
+			array( $this, 'snippets_intro' ),
+			'htmlpp_settings'
+		);
+
+		add_settings_field(
+			'head_snippet',
+			__( 'Head snippet', 'html-page-publisher' ),
+			array( $this, 'field_head_snippet' ),
+			'htmlpp_settings',
+			'htmlpp_snippets_section'
+		);
+
+		add_settings_field(
+			'footer_snippet',
+			__( 'Footer snippet', 'html-page-publisher' ),
+			array( $this, 'field_footer_snippet' ),
+			'htmlpp_settings',
+			'htmlpp_snippets_section'
+		);
+
+		add_settings_field(
+			'canonical',
+			__( 'Canonical link', 'html-page-publisher' ),
+			array( $this, 'field_canonical' ),
+			'htmlpp_settings',
+			'htmlpp_snippets_section'
+		);
+	}
+
+	/**
+	 * Snippets section intro.
+	 */
+	public function snippets_intro() {
+		echo '<p>' . esc_html__( 'Code added to every published page when it is served — analytics (GA4, GTM, Meta Pixel), fonts, a consent banner, a chat widget. Pages can opt out individually from their Page settings.', 'html-page-publisher' ) . '</p>';
+	}
+
+	/**
+	 * Render a snippet textarea.
+	 *
+	 * @param string $key   Setting key.
+	 * @param string $where Description of where it is inserted.
+	 */
+	private function snippet_field( $key, $where ) {
+		$settings = self::get_settings();
+		?>
+		<textarea
+			name="<?php echo esc_attr( self::OPTION ); ?>[<?php echo esc_attr( $key ); ?>]"
+			id="htmlpp-<?php echo esc_attr( $key ); ?>"
+			class="large-text code"
+			rows="6"
+			spellcheck="false"
+		><?php echo esc_textarea( $settings[ $key ] ); ?></textarea>
+		<p class="description"><?php echo esc_html( $where ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Head snippet field.
+	 */
+	public function field_head_snippet() {
+		$this->snippet_field( 'head_snippet', __( 'Inserted just before </head>. Paste full tags, e.g. the GA4 or GTM <script> block.', 'html-page-publisher' ) );
+	}
+
+	/**
+	 * Footer snippet field.
+	 */
+	public function field_footer_snippet() {
+		$this->snippet_field( 'footer_snippet', __( 'Inserted just before </body>.', 'html-page-publisher' ) );
+	}
+
+	/**
+	 * Canonical toggle.
+	 */
+	public function field_canonical() {
+		$settings = self::get_settings();
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[canonical]" value="1" <?php checked( ! empty( $settings['canonical'] ) ); ?> />
+			<?php esc_html_e( 'Add a <link rel="canonical"> to pages that do not already have one', 'html-page-publisher' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'Points search engines at the page’s public URL so the prefix URL, a custom path and a subdomain never compete with each other.', 'html-page-publisher' ); ?></p>
+		<?php
 	}
 
 	/**
@@ -85,7 +174,28 @@ class HTMLPP_Settings {
 	 * @return array
 	 */
 	public function sanitize( $input ) {
-		$out = array();
+		$out      = array();
+		$existing = self::get_settings();
+
+		// Snippets are raw markup by design (same trust model as uploading a
+		// page). Users without unfiltered_html (multisite site admins) are
+		// limited to what wp_kses_post() allows.
+		foreach ( array( 'head_snippet', 'footer_snippet' ) as $key ) {
+			$raw = isset( $input[ $key ] ) ? (string) $input[ $key ] : '';
+			if ( '' !== $raw && ! current_user_can( 'unfiltered_html' ) ) {
+				$raw = wp_kses_post( $raw );
+				if ( trim( $raw ) !== trim( (string) $input[ $key ] ) ) {
+					add_settings_error(
+						self::OPTION,
+						'htmlpp_snippet_filtered',
+						__( 'Some markup was removed from a snippet because your account does not have the unfiltered_html capability (script tags and similar are not allowed).', 'html-page-publisher' )
+					);
+				}
+			}
+			$out[ $key ] = trim( $raw );
+		}
+		$out['canonical'] = ! empty( $input['canonical'] );
+		unset( $existing );
 
 		$prefix = isset( $input['url_prefix'] ) ? sanitize_title( $input['url_prefix'] ) : 'pages';
 		if ( '' === $prefix ) {

@@ -18,7 +18,47 @@
 		initCodeEditor();
 		initAssetReplace();
 		initReviewNotice();
+		initSearch();
 	} );
+
+	/**
+	 * Client-side filter for the pages table.
+	 */
+	function initSearch() {
+		var input = document.querySelector( '[data-htmlpp-search]' );
+		if ( ! input ) {
+			return;
+		}
+		var selector = input.getAttribute( 'data-htmlpp-search' );
+		var rows = Array.prototype.slice.call( document.querySelectorAll( selector ) );
+		var table = rows.length ? rows[0].closest( 'table' ) : null;
+		var empty = document.createElement( 'p' );
+		empty.className = 'htmlpp-table-empty';
+		empty.hidden = true;
+		empty.textContent = ( window.htmlppL10n && window.htmlppL10n.noMatches ) || 'No matches.';
+		if ( table && table.parentNode ) {
+			table.parentNode.appendChild( empty );
+		}
+		var status = document.getElementById( 'htmlpp-search-status' );
+		input.addEventListener( 'input', function () {
+			var q = input.value.trim().toLowerCase();
+			var shown = 0;
+			rows.forEach( function ( row ) {
+				// Match on the page cell (slug, title, URL), not on buttons/dates.
+				var cell = row.querySelector( 'td' );
+				var text = ( cell ? cell.textContent : row.textContent ).toLowerCase();
+				var hit = ! q || text.indexOf( q ) !== -1;
+				row.hidden = ! hit;
+				if ( hit ) {
+					shown++;
+				}
+			} );
+			empty.hidden = shown > 0;
+			if ( status ) {
+				status.textContent = q ? shown + ' / ' + rows.length : '';
+			}
+		} );
+	}
 
 	/**
 	 * When the review button is clicked, also record "done" in the

@@ -102,7 +102,64 @@ function is_ssl() {
 	return true;
 }
 
+define( 'MB_IN_BYTES', 1048576 );
+
+function update_option( $name, $value, $autoload = null ) {
+	$GLOBALS['htmlpp_test_options'][ $name ] = $value;
+	return true;
+}
+
+function wp_generate_password( $length = 12, $special = true ) {
+	return substr( str_repeat( 'abc123', 10 ), 0, $length );
+}
+
+function add_query_arg( $key, $value = '', $url = '' ) {
+	if ( is_array( $key ) ) {
+		$url = $value;
+		return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . http_build_query( $key );
+	}
+	return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . rawurlencode( $key ) . '=' . rawurlencode( $value );
+}
+
+function esc_url( $url ) {
+	return htmlspecialchars( (string) $url, ENT_QUOTES, 'UTF-8' );
+}
+
+function size_format( $bytes ) {
+	return round( $bytes / MB_IN_BYTES ) . ' MB';
+}
+
+function __( $text, $domain = null ) { // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
+	return $text;
+}
+
+function wp_mkdir_p( $dir ) {
+	return is_dir( $dir ) || mkdir( $dir, 0777, true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+}
+
+function wp_delete_file( $file ) {
+	@unlink( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.unlink_unlink
+}
+
+function wp_parse_args( $args, $defaults = array() ) {
+	return array_merge( (array) $defaults, (array) $args );
+}
+
+function wp_salt( $scheme = 'auth' ) {
+	return 'test-salt-' . $scheme;
+}
+
+function get_post_types( $args = array(), $output = 'names' ) {
+	return array();
+}
+
+function wp_json_encode( $data ) {
+	return json_encode( $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+}
+
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-settings.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-meta.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-storage.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-sanitizer.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-renderer.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-zip.php';

@@ -345,29 +345,41 @@ class HTMLPP_Storage {
 	 * @return string e.g. "(?:png|jpg|jpeg|gif|svg|webp|avif)".
 	 */
 	public static function asset_extension_pattern() {
-		$mimes = class_exists( 'HTMLPP_Uploader' )
-			? HTMLPP_Uploader::allowed_image_mimes()
-			: array(
-				'png'      => 'image/png',
-				'jpg|jpeg' => 'image/jpeg',
-				'gif'      => 'image/gif',
-				'svg'      => 'image/svg+xml',
-				'webp'     => 'image/webp',
-				'avif'     => 'image/avif',
-			);
-
 		$keys = array();
-		foreach ( array_keys( $mimes ) as $key ) {
-			// Keys are wp_handle_upload() style alternations ("jpg|jpeg").
-			if ( preg_match( '/^[a-z0-9|]+$/i', (string) $key ) ) {
-				$keys[] = (string) $key;
+		if ( class_exists( 'HTMLPP_Zip' ) ) {
+			$keys = HTMLPP_Zip::allowed_extensions();
+		}
+		if ( class_exists( 'HTMLPP_Uploader' ) ) {
+			foreach ( array_keys( HTMLPP_Uploader::allowed_image_mimes() ) as $key ) {
+				// Keys are wp_handle_upload() style alternations ("jpg|jpeg").
+				$keys = array_merge( $keys, explode( '|', (string) $key ) );
 			}
 		}
+		$keys = array_values(
+			array_unique(
+				array_filter(
+					array_map( 'strtolower', $keys ),
+					static function ( $k ) {
+						return '' !== $k && preg_match( '/^[a-z0-9]+$/', $k );
+					}
+				)
+			)
+		);
 		if ( empty( $keys ) ) {
-			$keys[] = 'png';
+			$keys = array( 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif' );
 		}
 
 		return '(?:' . implode( '|', $keys ) . ')';
+	}
+
+	/**
+	 * Whether an extension is an image type (rendered as a thumbnail).
+	 *
+	 * @param string $ext Lowercase extension.
+	 * @return bool
+	 */
+	public static function is_image_extension( $ext ) {
+		return in_array( strtolower( (string) $ext ), array( 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'avif', 'ico', 'bmp' ), true );
 	}
 
 	/*
@@ -407,6 +419,13 @@ class HTMLPP_Storage {
 	 * @return string
 	 */
 	public static function public_page_url( $slug, $main_domain = false ) {
+		if ( class_exists( 'HTMLPP_Meta' ) ) {
+			$meta = HTMLPP_Meta::get( $slug );
+			if ( ! empty( $meta['path'] ) ) {
+				return HTMLPP_Meta::path_url( $meta['path'] );
+			}
+		}
+
 		$settings = HTMLPP_Settings::get_settings();
 		$slug_enc = rawurlencode( $slug );
 
@@ -501,7 +520,9 @@ class HTMLPP_Storage {
 				'url'      => self::public_page_url( $entry ),
 				'html'     => $index,
 				'images'   => $images,
+				'files'    => self::count_files( $path ),
 				'modified' => filemtime( $index ),
+				'meta'     => class_exists( 'HTMLPP_Meta' ) ? HTMLPP_Meta::get( $entry ) : array(),
 			);
 		}
 
@@ -513,6 +534,21 @@ class HTMLPP_Storage {
 		);
 
 		return $pages;
+	}
+
+	/**
+	 * Number of files in a page folder (all levels, index.html excluded).
+	 *
+	 * @param string $dir Absolute page directory.
+	 * @return int
+	 */
+	private static function count_files( $dir ) {
+		$count   = 0;
+		$pattern = '/\.' . self::asset_extension_pattern() . '$/i';
+		$files   = array();
+		self::walk( $dir, '', $pattern, $files, 0 );
+		$count = count( $files );
+		return $count;
 	}
 
 	/**
@@ -550,6 +586,10 @@ class HTMLPP_Storage {
 		$deleted = self::delete( $path, true );
 
 		if ( $deleted ) {
+			if ( class_exists( 'HTMLPP_Meta' ) ) {
+				HTMLPP_Meta::delete( $slug );
+			}
+
 			/**
 			 * Fires after a page has been deleted.
 			 *
@@ -559,6 +599,122 @@ class HTMLPP_Storage {
 		}
 
 		return $deleted;
+	}
+
+	/**
+	 * Copy a page directory to a new slug (no history, no metadata).
+	 *
+	 * @param string $from Existing slug.
+	 * @param string $to   New slug (must not exist).
+	 * @return bool
+	 */
+	public static function copy_page( $from, $to ) {
+		$from = self::sanitize_slug( $from );
+		$to   = self::sanitize_slug( $to );
+		if ( '' === $from || '' === $to || $from === $to || ! self::page_exists( $from ) || self::page_exists( $to ) ) {
+			return false;
+		}
+		$src  = realpath( self::page_dir( $from ) );
+		$dest = self::page_dir( $to );
+		if ( ! $src || is_dir( $dest ) ) {
+			return false;
+		}
+		if ( ! self::copy_dir( $src, $dest ) ) {
+			self::delete( $dest, true ); // Never leave a half-copied page behind.
+			return false;
+		}
+
+		/**
+		 * Fires after a page's files have been copied to a new slug.
+		 *
+		 * @param string $from Source slug.
+		 * @param string $to   New slug.
+		 */
+		do_action( 'htmlpp_page_copied', $from, $to );
+
+		return true;
+	}
+
+	/**
+	 * Recursively copy a directory (dotfiles are skipped).
+	 *
+	 * @param string $src  Source directory.
+	 * @param string $dest Destination directory.
+	 * @return bool
+	 */
+	private static function copy_dir( $src, $dest ) {
+		if ( ! wp_mkdir_p( $dest ) ) {
+			return false;
+		}
+		$entries = @scandir( $src ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_array( $entries ) ) {
+			return false;
+		}
+		foreach ( $entries as $entry ) {
+			if ( '.' === $entry || '..' === $entry || '.' === $entry[0] ) {
+				continue;
+			}
+			$from = trailingslashit( $src ) . $entry;
+			$to   = trailingslashit( $dest ) . $entry;
+			if ( is_link( $from ) ) {
+				continue;
+			}
+			if ( is_dir( $from ) ) {
+				if ( ! self::copy_dir( $from, $to ) ) {
+					return false;
+				}
+			} elseif ( ! copy( $from, $to ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_copy -- Inside the plugin's own uploads directory.
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Rename a page directory (and its version history) to a new slug.
+	 *
+	 * @param string $from Existing slug.
+	 * @param string $to   New slug (must not exist).
+	 * @return bool
+	 */
+	public static function rename_page( $from, $to ) {
+		$from = self::sanitize_slug( $from );
+		$to   = self::sanitize_slug( $to );
+		if ( '' === $from || '' === $to || $from === $to || ! self::page_exists( $from ) || self::page_exists( $to ) ) {
+			return false;
+		}
+		if ( is_dir( self::page_dir( $to ) ) ) {
+			return false;
+		}
+		if ( ! self::move( self::page_dir( $from ), self::page_dir( $to ) ) ) {
+			return false;
+		}
+		$old_backups = self::backups_dir( $from );
+		if ( is_dir( $old_backups ) ) {
+			$new_backups = self::backups_dir( $to );
+			if ( is_dir( $new_backups ) ) {
+				// Leftover history at the target slug: merge ours into it.
+				$entries = @scandir( $old_backups ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				foreach ( is_array( $entries ) ? $entries : array() as $entry ) {
+					if ( preg_match( '/\.html$/i', $entry ) && 'index.html' !== $entry ) {
+						self::move( trailingslashit( $old_backups ) . $entry, trailingslashit( $new_backups ) . $entry );
+					}
+				}
+				self::delete( $old_backups, true );
+			} else {
+				self::move( $old_backups, $new_backups );
+			}
+		}
+
+		/**
+		 * Fires after a page's files have been moved to a new slug.
+		 *
+		 * @param string $from Old slug.
+		 * @param string $to   New slug.
+		 */
+		do_action( 'htmlpp_page_renamed', $from, $to );
+
+		return true;
 	}
 
 	/*
@@ -855,56 +1011,128 @@ class HTMLPP_Storage {
 	}
 
 	/**
-	 * List a page's image assets, sorted by filename.
+	 * List every file in a page's folder except its index.html, sorted by
+	 * relative path. Covers the flat assets/ folder as well as the nested
+	 * structure of an imported ZIP bundle.
 	 *
 	 * @param string $slug Slug (will be sanitized).
-	 * @return array<int, array{name:string,reference:string,url:string,size:int,modified:int}>
+	 * @return array<int, array{name:string,reference:string,url:string,size:int,modified:int,ext:string,is_image:bool}>
 	 */
-	public static function list_assets( $slug ) {
-		$dir = self::assets_dir( $slug );
-		if ( '' === $dir || ! is_dir( $dir ) ) {
+	public static function list_files( $slug ) {
+		$slug = self::sanitize_slug( $slug );
+		$root = '' !== $slug ? realpath( self::page_dir( $slug ) ) : false;
+		$base = realpath( self::base_dir() );
+		if ( ! $root || ! $base || 0 !== strpos( $root, trailingslashit( $base ) ) ) {
 			return array();
 		}
 
-		$entries = @scandir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		if ( false === $entries ) {
-			return array();
-		}
-
-		$slug    = self::sanitize_slug( $slug );
-		$assets  = array();
 		$pattern = '/\.' . self::asset_extension_pattern() . '$/i';
+		$files   = array();
+		self::walk( $root, '', $pattern, $files, 0 );
 
-		foreach ( $entries as $entry ) {
-			if ( '.' === $entry || '..' === $entry ) {
-				continue;
-			}
-			if ( ! preg_match( $pattern, $entry ) ) {
-				continue;
-			}
-			$path = trailingslashit( $dir ) . $entry;
-			if ( ! is_file( $path ) ) {
-				continue;
-			}
-			$assets[] = array(
-				'name'      => $entry,
-				'reference' => 'assets/' . $entry,
-				// Served through the renderer on the main domain so previews
-				// work in wp-admin even before a subdomain's DNS is live.
-				'url'       => self::public_asset_url( $slug, $entry, true ),
-				'size'      => (int) filesize( $path ),
-				'modified'  => (int) filemtime( $path ),
-			);
+		$page_url = self::public_page_url( $slug, true );
+		foreach ( $files as &$file ) {
+			$file['url'] = $page_url . implode( '/', array_map( 'rawurlencode', explode( '/', $file['reference'] ) ) );
 		}
+		unset( $file );
 
 		usort(
-			$assets,
+			$files,
 			static function ( $a, $b ) {
-				return strcasecmp( $a['name'], $b['name'] );
+				return strcasecmp( $a['reference'], $b['reference'] );
 			}
 		);
 
-		return $assets;
+		return $files;
+	}
+
+	/**
+	 * Recursive helper for list_files().
+	 *
+	 * @param string $dir     Absolute directory.
+	 * @param string $rel     Relative prefix ('' at the root).
+	 * @param string $pattern Extension regex.
+	 * @param array  $files   Accumulator.
+	 * @param int    $depth   Current depth (capped).
+	 */
+	private static function walk( $dir, $rel, $pattern, array &$files, $depth ) {
+		if ( $depth > 8 ) {
+			return;
+		}
+		$entries = @scandir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_array( $entries ) ) {
+			return;
+		}
+		foreach ( $entries as $entry ) {
+			if ( '.' === $entry || '..' === $entry || '.' === $entry[0] ) {
+				continue;
+			}
+			$path = trailingslashit( $dir ) . $entry;
+			$ref  = '' === $rel ? $entry : $rel . '/' . $entry;
+			if ( is_link( $path ) ) {
+				continue;
+			}
+			if ( is_dir( $path ) ) {
+				self::walk( $path, $ref, $pattern, $files, $depth + 1 );
+				continue;
+			}
+			if ( 'index.html' === $ref || ! preg_match( $pattern, $entry ) ) {
+				continue;
+			}
+			$ext     = strtolower( pathinfo( $entry, PATHINFO_EXTENSION ) );
+			$files[] = array(
+				'name'      => $entry,
+				'reference' => $ref,
+				'url'       => '',
+				'size'      => (int) filesize( $path ),
+				'modified'  => (int) filemtime( $path ),
+				'ext'       => $ext,
+				'is_image'  => self::is_image_extension( $ext ),
+			);
+		}
+	}
+
+	/**
+	 * List a page's assets (alias of list_files() kept for compatibility).
+	 *
+	 * @param string $slug Slug (will be sanitized).
+	 * @return array
+	 */
+	public static function list_assets( $slug ) {
+		return self::list_files( $slug );
+	}
+
+	/**
+	 * Resolve and validate the path of an existing file inside a page's
+	 * folder from its relative reference (e.g. "assets/hero.png",
+	 * "css/site.css"). The page's own index.html is never returned.
+	 *
+	 * @param string $slug      Slug (will be sanitized).
+	 * @param string $reference Relative path.
+	 * @return string Absolute path, or '' if invalid / missing / traversal.
+	 */
+	public static function file_path( $slug, $reference ) {
+		$slug      = self::sanitize_slug( $slug );
+		$reference = str_replace( '\\', '/', trim( (string) $reference, '/' ) );
+		if ( '' === $slug || '' === $reference || 'index.html' === $reference ) {
+			return '';
+		}
+		foreach ( explode( '/', $reference ) as $segment ) {
+			if ( '' === $segment || '.' === $segment[0] || '..' === $segment || preg_match( '/[\x00-\x1f]/', $segment ) ) {
+				return '';
+			}
+		}
+		if ( ! preg_match( '/\.' . self::asset_extension_pattern() . '$/i', $reference ) || HTMLPP_Renderer::has_blocked_extension_part( basename( $reference ) ) ) {
+			return '';
+		}
+
+		$root = realpath( self::page_dir( $slug ) );
+		$real = realpath( trailingslashit( self::page_dir( $slug ) ) . $reference );
+		if ( ! $root || ! $real || 0 !== strpos( $real, trailingslashit( $root ) ) || ! is_file( $real ) ) {
+			return '';
+		}
+
+		return $real;
 	}
 
 	/**
@@ -915,35 +1143,18 @@ class HTMLPP_Storage {
 	 * @return string Absolute path, or '' if invalid / missing / traversal.
 	 */
 	public static function asset_path( $slug, $name ) {
-		$dir  = self::assets_dir( $slug );
-		$name = basename( (string) $name );
-
-		if ( '' === $dir
-			|| '' === $name
-			|| ! preg_match( '/^[A-Za-z0-9 ._-]+\.' . self::asset_extension_pattern() . '$/i', $name )
-		) {
-			return '';
-		}
-
-		$real_dir = realpath( $dir );
-		$real     = realpath( trailingslashit( $dir ) . $name );
-
-		if ( ! $real_dir || ! $real || 0 !== strpos( $real, trailingslashit( $real_dir ) ) || ! is_file( $real ) ) {
-			return '';
-		}
-
-		return $real;
+		return self::file_path( $slug, 'assets/' . basename( (string) $name ) );
 	}
 
 	/**
-	 * Delete a single asset. Guards against path traversal.
+	 * Delete a single file from a page's folder. Guards against path traversal.
 	 *
-	 * @param string $slug Slug (will be sanitized).
-	 * @param string $name Asset filename (basename only).
+	 * @param string $slug      Slug (will be sanitized).
+	 * @param string $reference Relative path (e.g. "assets/hero.png").
 	 * @return bool True on success.
 	 */
-	public static function delete_asset( $slug, $name ) {
-		$path = self::asset_path( $slug, $name );
+	public static function delete_asset( $slug, $reference ) {
+		$path = self::file_path( $slug, $reference );
 		if ( '' === $path ) {
 			return false;
 		}

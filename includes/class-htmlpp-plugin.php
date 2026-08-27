@@ -85,6 +85,7 @@ final class HTMLPP_Plugin {
 	private function __construct() {
 		// Renderer runs on all requests so it can intercept page serving.
 		$this->renderer = new HTMLPP_Renderer();
+		new HTMLPP_Sitemap();
 
 		if ( is_admin() ) {
 			$this->settings = new HTMLPP_Settings();

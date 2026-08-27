@@ -249,8 +249,17 @@ class HTMLPP_Admin {
 	 * @return string
 	 */
 	private function redirect_target( $notice ) {
+		// Handlers that moved or created a page tell us where it lives now.
+		if ( ! empty( $notice['slug'] ) && 'success' === $notice['type'] ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Read-only routing; the mutation was already nonce-verified.
+			if ( isset( $_POST['htmlpp_upload'] ) ) {
+				return self::list_url();
+			}
+			return self::edit_url( $notice['slug'] );
+		}
+
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Read-only routing; the mutation was already nonce-verified.
-		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete' ) as $key ) {
+		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete', 'htmlpp_page_settings', 'htmlpp_duplicate', 'htmlpp_reset_preview' ) as $key ) {
 			if ( isset( $_POST[ $key ] ) ) {
 				$slug = HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );
 				return '' !== $slug ? self::edit_url( $slug ) : self::list_url();
@@ -395,12 +404,12 @@ class HTMLPP_Admin {
 				'id'      => 'htmlpp-overview',
 				'title'   => __( 'Overview', 'html-page-publisher' ),
 				'content' =>
-					'<p>' . esc_html__( 'HTML Page Publisher serves standalone HTML files — Claude Design exports, pages from ChatGPT or Gemini, or hand-written HTML — at clean, configurable URLs on your own site.', 'html-page-publisher' ) . '</p>' .
+					'<p>' . esc_html__( 'HTML Page Publisher serves standalone HTML files — Claude Design exports, pages from ChatGPT or Gemini, or hand-written HTML — at clean, configurable URLs on your own site. Upload a single file or a ZIP bundle, keep drafts private with a preview link, and serve a page at a custom path or as the front page.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Publish in three steps:', 'html-page-publisher' ) . '</strong></p>' .
 					'<ol>' .
 					'<li>' . esc_html__( 'Enter a URL-friendly slug (lowercase letters, numbers, and hyphens).', 'html-page-publisher' ) . '</li>' .
-					'<li>' . esc_html__( 'Upload your HTML file. Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ) . '</li>' .
-					'<li>' . esc_html__( '(Optional) Upload any images referenced by the HTML. They go into the page’s /assets/ folder.', 'html-page-publisher' ) . '</li>' .
+					'<li>' . esc_html__( 'Upload your HTML file, or a ZIP of the exported folder. Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ) . '</li>' .
+					'<li>' . esc_html__( '(Optional) Upload any images or other files referenced by the HTML. They go into the page’s /assets/ folder.', 'html-page-publisher' ) . '</li>' .
 					'</ol>' .
 					'<p>' . sprintf(
 						/* translators: %s: example URL */
@@ -602,6 +611,7 @@ class HTMLPP_Admin {
 				/* translators: %s: combined size of the selected files, e.g. 1.2 MB */
 				'total'         => __( '%s total', 'html-page-publisher' ),
 				'unsaved'       => __( 'You have unsaved changes to this page’s HTML.', 'html-page-publisher' ),
+				'noMatches'     => __( 'No pages match your search.', 'html-page-publisher' ),
 			)
 		);
 
@@ -754,9 +764,12 @@ class HTMLPP_Admin {
 
 		$editing_disabled = HTMLPP_Uploader::file_editing_disabled();
 		$backups          = HTMLPP_Storage::list_backups( $slug );
-		$assets           = HTMLPP_Storage::list_assets( $slug );
+		$assets           = HTMLPP_Storage::list_files( $slug );
 		$page_url         = HTMLPP_Storage::public_page_url( $slug );
 		$list_url         = self::list_url();
+		$meta             = HTMLPP_Meta::get( $slug );
+		$preview_url      = HTMLPP_Meta::preview_url( $slug );
+		$accept           = HTMLPP_Uploader::accept_attribute();
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-edit.php';
 	}

@@ -21,6 +21,13 @@ $htmlpp_prefill_slug = isset( $_GET['prefill_slug'] ) ? HTMLPP_Storage::sanitize
 $htmlpp_editing_off  = HTMLPP_Uploader::file_editing_disabled();
 $htmlpp_protection   = get_transient( HTMLPP_Storage::PROTECTION_TRANSIENT );
 $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protection['status'] ) ? $htmlpp_protection['status'] : 'unknown';
+$htmlpp_accept       = HTMLPP_Uploader::accept_attribute();
+$htmlpp_published    = 0;
+foreach ( $pages as $htmlpp_p ) {
+	if ( empty( $htmlpp_p['meta'] ) || HTMLPP_Meta::is_public( $htmlpp_p['meta'] ) ) {
+		++$htmlpp_published;
+	}
+}
 ?>
 <div class="wrap htmlpp-page">
 
@@ -72,7 +79,18 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 	<div class="htmlpp-stats">
 		<div class="htmlpp-stat">
 			<p class="htmlpp-stat__label"><?php esc_html_e( 'Published Pages', 'html-page-publisher' ); ?></p>
-			<p class="htmlpp-stat__value"><?php echo (int) count( $pages ); ?></p>
+			<p class="htmlpp-stat__value"><?php echo (int) $htmlpp_published; ?></p>
+			<?php if ( count( $pages ) > $htmlpp_published ) : ?>
+				<p class="htmlpp-stat__hint">
+					<?php
+					printf(
+						/* translators: %d: number of draft pages */
+						esc_html( _n( '+ %d draft', '+ %d drafts', count( $pages ) - $htmlpp_published, 'html-page-publisher' ) ),
+						(int) ( count( $pages ) - $htmlpp_published )
+					);
+					?>
+				</p>
+			<?php endif; ?>
 		</div>
 		<div class="htmlpp-stat">
 			<p class="htmlpp-stat__label"><?php esc_html_e( 'URL Pattern', 'html-page-publisher' ); ?></p>
@@ -172,9 +190,9 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 					</div>
 
 					<div class="htmlpp-field">
-						<label class="htmlpp-field__label" for="html_file"><?php esc_html_e( 'HTML file', 'html-page-publisher' ); ?></label>
+						<label class="htmlpp-field__label" for="html_file"><?php esc_html_e( 'HTML file or ZIP bundle', 'html-page-publisher' ); ?></label>
 						<div class="htmlpp-dropzone">
-							<input type="file" id="html_file" name="html_file" accept=".html,.htm" required />
+							<input type="file" id="html_file" name="html_file" accept=".html,.htm,.zip" required />
 							<span class="htmlpp-dropzone__icon" aria-hidden="true">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -184,18 +202,18 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 							</span>
 							<span class="htmlpp-dropzone__body">
 								<span class="htmlpp-dropzone__title"><?php esc_html_e( 'Click or drag to upload', 'html-page-publisher' ); ?></span>
-								<span class="htmlpp-dropzone__hint"><?php esc_html_e( '.html or .htm file', 'html-page-publisher' ); ?></span>
+								<span class="htmlpp-dropzone__hint"><?php esc_html_e( '.html, .htm, or a .zip with index.html + css/js/images', 'html-page-publisher' ); ?></span>
 							</span>
 						</div>
 						<p class="htmlpp-field__help">
-							<?php esc_html_e( 'Any standalone HTML file. Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ); ?>
+							<?php esc_html_e( 'A standalone HTML file, or a ZIP of an exported site folder (index.html at the top level, assets in subfolders). Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ); ?>
 						</p>
 					</div>
 
 					<div class="htmlpp-field">
-						<label class="htmlpp-field__label" for="image_files"><?php esc_html_e( 'Images (optional)', 'html-page-publisher' ); ?></label>
+						<label class="htmlpp-field__label" for="image_files"><?php esc_html_e( 'Images & files (optional)', 'html-page-publisher' ); ?></label>
 						<div class="htmlpp-dropzone">
-							<input type="file" id="image_files" name="image_files[]" accept="image/*" multiple />
+							<input type="file" id="image_files" name="image_files[]" accept="<?php echo esc_attr( $htmlpp_accept ); ?>" multiple />
 							<span class="htmlpp-dropzone__icon" aria-hidden="true">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -204,12 +222,22 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 								</svg>
 							</span>
 							<span class="htmlpp-dropzone__body">
-								<span class="htmlpp-dropzone__title"><?php esc_html_e( 'Click or drag images', 'html-page-publisher' ); ?></span>
-								<span class="htmlpp-dropzone__hint"><?php esc_html_e( 'PNG, JPG, GIF, SVG, WebP, AVIF', 'html-page-publisher' ); ?></span>
+								<span class="htmlpp-dropzone__title"><?php esc_html_e( 'Click or drag files', 'html-page-publisher' ); ?></span>
+								<span class="htmlpp-dropzone__hint"><?php esc_html_e( 'Images, CSS, JS, fonts, video, PDF', 'html-page-publisher' ); ?></span>
 							</span>
 						</div>
 						<p class="htmlpp-field__help">
-							<?php esc_html_e( 'Uploaded to the assets/ folder. Filenames must match references in the HTML.', 'html-page-publisher' ); ?>
+							<?php esc_html_e( 'Uploaded to the assets/ folder. Reference them in the HTML as assets/filename.', 'html-page-publisher' ); ?>
+						</p>
+					</div>
+
+					<div class="htmlpp-field">
+						<label class="htmlpp-checkbox">
+							<input type="checkbox" name="htmlpp_draft" value="1" aria-describedby="htmlpp-draft-help" />
+							<span><?php esc_html_e( 'Save as draft (preview before publishing)', 'html-page-publisher' ); ?></span>
+						</label>
+						<p class="htmlpp-field__help" id="htmlpp-draft-help">
+							<?php esc_html_e( 'New pages only. Drafts are hidden from visitors and search engines; you get a shareable preview link and can publish from the page’s settings. Replacing an existing page keeps its current status.', 'html-page-publisher' ); ?>
 						</p>
 					</div>
 
@@ -245,12 +273,20 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 			<div class="htmlpp-card__header">
 				<div>
 					<h2 class="htmlpp-card__title"><?php esc_html_e( 'Existing Pages', 'html-page-publisher' ); ?></h2>
-					<p class="htmlpp-card__subtitle"><?php printf( /* translators: %d: count */ esc_html( _n( '%d page published', '%d pages published', count( $pages ), 'html-page-publisher' ) ), (int) count( $pages ) ); ?></p>
+					<p class="htmlpp-card__subtitle"><?php printf( /* translators: %d: count */ esc_html( _n( '%d page', '%d pages', count( $pages ), 'html-page-publisher' ) ), (int) count( $pages ) ); ?></p>
 				</div>
 				<?php if ( ! empty( $pages ) ) : ?>
 					<span class="htmlpp-badge"><?php echo (int) count( $pages ); ?></span>
 				<?php endif; ?>
 			</div>
+
+			<?php if ( count( $pages ) > 1 ) : ?>
+				<div class="htmlpp-search">
+					<label class="screen-reader-text" for="htmlpp-search"><?php esc_html_e( 'Filter pages', 'html-page-publisher' ); ?></label>
+					<input type="search" id="htmlpp-search" class="htmlpp-search__input" placeholder="<?php esc_attr_e( 'Filter by slug, title or URL…', 'html-page-publisher' ); ?>" data-htmlpp-search=".htmlpp-table tbody tr" aria-describedby="htmlpp-search-status" />
+					<span id="htmlpp-search-status" class="screen-reader-text" aria-live="polite"></span>
+				</div>
+			<?php endif; ?>
 
 			<div class="htmlpp-card__body htmlpp-card__body--flush">
 				<?php if ( empty( $pages ) ) : ?>
@@ -270,7 +306,7 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Page', 'html-page-publisher' ); ?></th>
-								<th style="width:90px;"><?php esc_html_e( 'Images', 'html-page-publisher' ); ?></th>
+								<th style="width:90px;"><?php esc_html_e( 'Files', 'html-page-publisher' ); ?></th>
 								<th style="width:160px;"><?php esc_html_e( 'Modified', 'html-page-publisher' ); ?></th>
 								<th style="width:170px;"></th>
 							</tr>
@@ -279,15 +315,26 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 							<?php foreach ( $pages as $htmlpp_page ) : ?>
 								<tr>
 									<td>
-										<a href="<?php echo esc_url( $htmlpp_page['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="htmlpp-slug">
+										<?php
+										$htmlpp_meta     = isset( $htmlpp_page['meta'] ) ? $htmlpp_page['meta'] : array();
+										$htmlpp_is_draft = ! empty( $htmlpp_meta ) && ! HTMLPP_Meta::is_public( $htmlpp_meta );
+										$htmlpp_view_url = $htmlpp_is_draft ? HTMLPP_Meta::preview_url( $htmlpp_page['slug'] ) : $htmlpp_page['url'];
+										?>
+										<a href="<?php echo esc_url( $htmlpp_view_url ); ?>" target="_blank" rel="noopener noreferrer" class="htmlpp-slug">
 											<?php echo esc_html( $htmlpp_page['slug'] ); ?>
 										</a>
+										<?php if ( $htmlpp_is_draft ) : ?>
+											<span class="htmlpp-status htmlpp-status--draft"><?php esc_html_e( 'Draft', 'html-page-publisher' ); ?></span>
+										<?php endif; ?>
+										<?php if ( ! empty( $htmlpp_meta['noindex'] ) ) : ?>
+											<span class="htmlpp-status htmlpp-status--noindex"><?php esc_html_e( 'noindex', 'html-page-publisher' ); ?></span>
+										<?php endif; ?>
 										<?php if ( ! empty( $htmlpp_page['title'] ) ) : ?>
 											<span class="htmlpp-page-title" title="<?php echo esc_attr( $htmlpp_page['title'] ); ?>"><?php echo esc_html( $htmlpp_page['title'] ); ?></span>
 										<?php endif; ?>
-										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_page['url'] ); ?>">
-											<span class="htmlpp-url-pill__text"><?php echo esc_html( $htmlpp_page['url'] ); ?></span>
-											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $htmlpp_page['url'] ); ?>" aria-label="<?php esc_attr_e( 'Copy URL', 'html-page-publisher' ); ?>">
+										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_view_url ); ?>">
+											<span class="htmlpp-url-pill__text"><?php echo esc_html( $htmlpp_is_draft ? __( 'Preview link', 'html-page-publisher' ) . ': ' . $htmlpp_view_url : $htmlpp_page['url'] ); ?></span>
+											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $htmlpp_view_url ); ?>" aria-label="<?php echo esc_attr( $htmlpp_is_draft ? __( 'Copy preview link', 'html-page-publisher' ) : __( 'Copy URL', 'html-page-publisher' ) ); ?>">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
 													<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -295,7 +342,7 @@ $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protecti
 											</button>
 										</span>
 									</td>
-									<td><?php echo (int) count( $htmlpp_page['images'] ); ?></td>
+									<td><?php echo isset( $htmlpp_page['files'] ) ? (int) $htmlpp_page['files'] : (int) count( $htmlpp_page['images'] ); ?></td>
 									<td><?php echo esc_html( wp_date( 'M j, Y g:ia', $htmlpp_page['modified'] ) ); ?></td>
 									<td>
 										<div class="htmlpp-row-actions">

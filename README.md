@@ -10,10 +10,14 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 
 ## Features
 
-- Upload a single `.html` file + image assets through a polished admin UI; get a public URL
+- Upload a single `.html` file + assets, or a whole ZIP bundle (index.html + css/js/images/fonts), and get a public URL
+- **Drafts & previews**: hidden from visitors and search engines, shareable preview link with a secret token
+- **Custom paths / front page**: serve a page at `/promo/` or as the site's homepage
+- **Global snippets**: GA4/GTM/pixels/fonts injected at serve time on every page, per-page opt-out
+- **SEO**: core XML sitemap provider, per-page noindex, canonical link; **rename** (301 from the old slug) and **duplicate** (as draft)
 - **Built-in HTML editor**: edit published pages in the dashboard with the native WordPress code editor (large/minified files fall back to a plain editor automatically)
 - **Version history**: every save snapshots the previous version; restore any earlier version with one click (restoring is itself undoable; retention filterable via `htmlpp_max_backups`)
-- **Image management**: add, replace, or delete a page's images in place — Replace keeps the original filename so existing references keep working
+- **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
 - **Clean Claude Design exports**: strips the export-time runtime wrappers Claude Design adds; rules are named and filterable (`htmlpp_sanitizer_rules`)
 - Configurable URL prefix (default `/pages/your-slug/`), optional subdomain routing (`sales.example.com/your-slug/`), subdirectory installs supported
 - **Cache-friendly**: `ETag` / `Last-Modified`, conditional `304`, `HEAD`; canonical trailing-slash redirect
@@ -44,8 +48,8 @@ Quick start:
 1. Activate the plugin → a new **HTML Pages** menu appears
 2. Enter a slug, pick an HTML file, optionally add images → Publish
 3. Your page is live at `example.com/pages/your-slug/`
-4. Click **Edit** on any page to change its HTML or manage its images; previous versions are saved automatically and can be restored
-5. To change the URL prefix, enable subdomain routing, or check storage protection, open **HTML Pages → Settings**
+4. Click **Edit** on any page to change its HTML, manage its files, set a custom path, or switch between draft and published; previous versions are saved automatically and can be restored
+5. To change the URL prefix, enable subdomain routing, add global analytics snippets, or check storage protection, open **HTML Pages → Settings**
 
 ## Hooks
 
@@ -69,10 +73,25 @@ Quick start:
 | `htmlpp_editing_disabled` | filter | Lock down in-dashboard editing |
 | `htmlpp_htaccess_rules` | filter | Contents of the protective `.htaccess` |
 | `htmlpp_max_backups` | filter | Version-history retention per page |
+| `htmlpp_page_meta` | filter | A page's metadata record; `( $record, $slug )` |
+| `htmlpp_page_meta_defaults` | filter | Register extra per-page fields an add-on wants persisted |
+| `htmlpp_page_meta_updated` | action | Metadata saved; `( $slug, $record, $before )` |
+| `htmlpp_page_status_changed` | action | Draft ↔ published; `( $slug, $from, $to )` |
+| `htmlpp_page_created` | action | New page (draft or published); `( $slug, $html, $status )` |
+| `htmlpp_page_renamed` | action | Files moved to a new slug; `( $old, $new )` |
+| `htmlpp_page_copied` / `htmlpp_page_duplicated` | action | Files copied / duplicate draft created; `( $from, $to )` |
+| `htmlpp_zip_imported` | action | ZIP unpacked; `( $slug, $import_result )` |
+| `htmlpp_assets_uploaded` / `htmlpp_asset_replaced` / `htmlpp_asset_deleted` | action | File changes; `( $slug, … )` |
+| `htmlpp_page_html` | filter | Final page HTML before it is sent; `( $html, $slug, $meta, $preview )` |
+| `htmlpp_can_preview` | filter | Who may view a draft; `( $allowed, $slug )` |
+| `htmlpp_sitemap_entries` | filter | Entries for the XML sitemap |
+| `htmlpp_reserved_paths` / `htmlpp_path_collides` | filter | Custom-path validation |
+| `htmlpp_home_reserved_query_vars` | filter | Query vars that bypass a front-page mapping |
+| `htmlpp_zip_allowed_extensions` / `htmlpp_zip_max_bytes` / `htmlpp_zip_max_files` | filter | ZIP import limits |
 
 ## Development
 
-**Requirements:** WordPress 5.9+, PHP 7.4+. Tested up to WordPress 7.1.
+**Requirements:** WordPress 5.9+, PHP 7.4+ (ZIP import needs the ZipArchive extension). Tested up to WordPress 7.1.
 
 ### Running locally
 
