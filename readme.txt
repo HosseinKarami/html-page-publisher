@@ -5,7 +5,7 @@ Tags: html, landing page, claude design, ai, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,6 +25,7 @@ It is built for the "I made this page with an AI tool, now how do I get it onto 
 * **Global snippets**: add GA4/GTM/pixel, fonts or a consent banner to every page from Settings (pages can opt out)
 * **SEO**: pages are listed in the WordPress XML sitemap, can be marked noindex, and get a canonical link
 * **Rename and duplicate**: change a slug (the old URL redirects) or copy a page as a new draft
+* **REST API and WP-CLI**: publish from scripts, CI, or an AI agent — `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`. A Claude Code skill is included in the GitHub repository.
 * **Built-in HTML editor**: edit a published page in the dashboard with the native WordPress code editor (syntax highlighting)
 * **Version history**: every save keeps the previous version; restore any earlier version with one click (restoring is itself undoable)
 * **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
@@ -75,6 +76,14 @@ Yes. In a page's settings, set **Custom path** to `promo` to serve it at `https:
 = Are pages in my XML sitemap? =
 
 Published pages that are not marked noindex are listed at `/wp-sitemap-htmlpp-1.xml`, which is linked from WordPress's built-in sitemap index. SEO plugins such as Yoast or Rank Math replace the core sitemap with their own; in that case use the `htmlpp_sitemap_entries` filter (or `HTMLPP_Sitemap::entries()`) to feed their sitemap.
+
+= Can I publish from a script, CI, or Claude Code? =
+
+Yes. The plugin exposes a REST API at `/wp-json/htmlpp/v1` (list, create/replace from an HTML file or ZIP, update HTML or settings, rename, duplicate, files, versions, preview links). Authenticate with an application password (Users → Profile → Application Passwords) for an administrator:
+
+`curl -u "admin:xxxx xxxx xxxx xxxx" -F slug=spring-promo -F file=@index.html https://example.com/wp-json/htmlpp/v1/pages`
+
+With shell access, `wp htmlpp publish spring-promo ./site.zip --overwrite` does the same. The GitHub repository ships a Claude Code skill (`skills/publish-to-wordpress`) so Claude can publish a page it just generated.
 
 = Which AI tools does it work with? =
 
@@ -141,6 +150,13 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 
 == Changelog ==
 
+= 1.5.0 =
+* New: REST API at `/wp-json/htmlpp/v1` — list, create/replace (JSON HTML or multipart HTML/ZIP + files), update HTML and settings, rename, duplicate, delete, files, version history and restore, preview links. Application-password or cookie+nonce auth; `manage_options` required.
+* New: WP-CLI — `wp htmlpp list|get|publish|update|delete|duplicate|preview|files|versions|restore`.
+* New: `HTMLPP_Page_Service` (`htmlpp()->pages`) — one API for every page operation, shared by the admin screens, REST and CLI. Add-ons should use it instead of the storage classes.
+* New: Claude Code plugin manifest and `publish-to-wordpress` skill in the repository.
+* Improved: Admin form handlers are thin wrappers over the service; sideloaded files (CLI) are validated exactly like uploads.
+
 = 1.4.0 =
 * New: Upload a ZIP bundle (index.html + css/js/images/fonts in subfolders). Files keep their relative paths; executables are skipped and reported.
 * New: Any file type a page needs can be added in the Files & Assets panel — CSS, JS, fonts, video, PDF — not only images.
@@ -206,6 +222,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.5.0 =
+REST API and WP-CLI for publishing from scripts and AI agents; no changes to existing pages or URLs.
 
 = 1.4.0 =
 ZIP bundles, drafts with preview links, custom paths and front-page mapping, global analytics snippets, sitemap/noindex, rename and duplicate. Existing pages keep their URLs.

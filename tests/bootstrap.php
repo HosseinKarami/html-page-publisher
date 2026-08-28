@@ -157,9 +157,102 @@ function wp_json_encode( $data ) {
 	return json_encode( $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 }
 
+if ( ! class_exists( 'WP_Error' ) ) {
+	/**
+	 * Minimal WP_Error stand-in.
+	 */
+	class WP_Error { // phpcs:ignore Generic.Files.OneObjectStructurePerFile.MultipleFound, Generic.Classes.DuplicateClassName.Found
+		public $code;
+		public $message;
+		public $data;
+		public function __construct( $code = '', $message = '', $data = '' ) {
+			$this->code    = $code;
+			$this->message = $message;
+			$this->data    = $data;
+		}
+		public function get_error_code() {
+			return $this->code;
+		}
+		public function get_error_message() {
+			return $this->message;
+		}
+		public function get_error_data() {
+			return $this->data;
+		}
+	}
+}
+
+function is_wp_error( $thing ) {
+	return $thing instanceof WP_Error;
+}
+
+function get_current_user_id() {
+	return 7;
+}
+
+function url_to_postid( $url ) {
+	return isset( $GLOBALS['htmlpp_test_post_urls'][ $url ] ) ? $GLOBALS['htmlpp_test_post_urls'][ $url ] : 0;
+}
+
+function get_the_title( $post_id ) {
+	return 'Post ' . $post_id;
+}
+
+function admin_url( $path = '' ) {
+	return home_url( '/wp-admin/' . ltrim( $path, '/' ) );
+}
+
+function plugin_basename( $file ) {
+	return basename( dirname( $file ) ) . '/' . basename( $file );
+}
+
+function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
+	return true;
+}
+
+function wp_unique_filename( $dir, $filename ) {
+	$name = $filename;
+	$i    = 1;
+	while ( file_exists( rtrim( $dir, '/' ) . '/' . $name ) ) {
+		$name = preg_replace( '/(\.[^.]+)$/', '-' . $i . '$1', $filename );
+		++$i;
+	}
+	return $name;
+}
+
+function sanitize_file_name( $name ) {
+	return preg_replace( '/[^A-Za-z0-9._-]/', '-', (string) $name );
+}
+
+function sanitize_text_field( $value ) {
+	return trim( strip_tags( (string) $value ) );
+}
+
+function wp_unslash( $value ) {
+	return $value;
+}
+
+function wp_upload_dir_base() {
+	return sys_get_temp_dir() . '/htmlpp-tests/uploads';
+}
+
+function htmlpp() {
+	static $plugin = null;
+	if ( null === $plugin ) {
+		$plugin        = new stdClass();
+		$plugin->pages = new HTMLPP_Page_Service();
+	}
+	return $plugin;
+}
+
+define( 'HTMLPP_PLUGIN_FILE', dirname( __DIR__ ) . '/html-page-publisher.php' );
+
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-settings.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-meta.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-storage.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-sanitizer.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-renderer.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-zip.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-uploader.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-admin.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-page-service.php';

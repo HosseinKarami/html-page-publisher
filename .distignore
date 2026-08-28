@@ -31,6 +31,8 @@ bin
 docs
 .wordpress-org
 wporg-assets
+.claude-plugin
+skills
 README.md
 CHANGELOG.md
 CONTRIBUTING.md

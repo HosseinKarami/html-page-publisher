@@ -1,0 +1,13 @@
+{
+	"name": "html-page-publisher",
+	"description": "Publish a standalone HTML page (for example a Claude Design export) to a WordPress site running the HTML Page Publisher plugin, via its REST API.",
+	"version": "1.5.0",
+	"author": {
+		"name": "Hossein Karami",
+		"url": "https://hosseinkarami.com"
+	},
+	"homepage": "https://wordpress.org/plugins/html-page-publisher/",
+	"repository": "https://github.com/HosseinKarami/html-page-publisher",
+	"license": "GPL-2.0-or-later",
+	"keywords": [ "wordpress", "html", "landing-page", "publish", "claude-design" ]
+}

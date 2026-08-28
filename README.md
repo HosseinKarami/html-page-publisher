@@ -15,6 +15,7 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 - **Custom paths / front page**: serve a page at `/promo/` or as the site's homepage
 - **Global snippets**: GA4/GTM/pixels/fonts injected at serve time on every page, per-page opt-out
 - **SEO**: core XML sitemap provider, per-page noindex, canonical link; **rename** (301 from the old slug) and **duplicate** (as draft)
+- **REST API + WP-CLI**: `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`; a Claude Code skill (`skills/publish-to-wordpress`) lets Claude publish what it just built
 - **Built-in HTML editor**: edit published pages in the dashboard with the native WordPress code editor (large/minified files fall back to a plain editor automatically)
 - **Version history**: every save snapshots the previous version; restore any earlier version with one click (restoring is itself undoable; retention filterable via `htmlpp_max_backups`)
 - **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
@@ -50,6 +51,55 @@ Quick start:
 3. Your page is live at `example.com/pages/your-slug/`
 4. Click **Edit** on any page to change its HTML, manage its files, set a custom path, or switch between draft and published; previous versions are saved automatically and can be restored
 5. To change the URL prefix, enable subdomain routing, add global analytics snippets, or check storage protection, open **HTML Pages → Settings**
+
+## REST API
+
+Base: `https://example.com/wp-json/htmlpp/v1` — authenticate with an [application password](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/) for an administrator (`-u "user:xxxx xxxx xxxx xxxx"`), or a logged-in cookie plus `X-WP-Nonce`.
+
+| Method | Route | Body |
+| --- | --- | --- |
+| `GET` | `/pages` | — |
+| `POST` | `/pages` | multipart `slug`, `file` (.html/.zip), `files[]`, `status`, `overwrite` — or JSON `{slug, html, status, overwrite}` |
+| `GET` | `/pages/{slug}?html=1` | — |
+| `PUT` | `/pages/{slug}` | JSON any of `html`, `status`, `path`, `noindex`, `no_snippets`, `new_slug` |
+| `DELETE` | `/pages/{slug}` | — |
+| `POST` | `/pages/{slug}/duplicate` | `{new_slug}` |
+| `GET` / `DELETE` | `/pages/{slug}/preview-link` | get / reset the draft preview link |
+| `GET` / `POST` | `/pages/{slug}/files` | list / multipart `files[]` |
+| `DELETE` | `/pages/{slug}/files?reference=assets/hero.png` | or JSON `{reference}` |
+| `GET` | `/pages/{slug}/versions` | — |
+| `POST` | `/pages/{slug}/versions/{name}/restore` | — |
+
+```bash
+curl -u "admin:xxxx xxxx xxxx xxxx" -F slug=spring-promo -F file=@site.zip -F status=draft \
+  https://example.com/wp-json/htmlpp/v1/pages
+```
+
+`POST /pages` returns `201` for a new page and `200` when `overwrite=true`
+replaces one (`created` is `false` then). A duplicate slug without `overwrite`
+returns `409 htmlpp_exists`; validation errors return `400`/`409` with a `code`
+(`htmlpp_bad_path`, `htmlpp_path_taken`, …) in the standard WP REST error shape.
+`files[]` can only be sent as multipart, not JSON.
+
+## WP-CLI
+
+```bash
+wp htmlpp list
+wp htmlpp publish spring-promo ./index.html --asset=./hero.png
+wp htmlpp publish spring-promo ./site.zip --overwrite --porcelain
+wp htmlpp update spring-promo --status=published --url-path=promo
+wp htmlpp update spring-promo --rename=spring-sale
+wp htmlpp preview spring-promo --reset
+wp htmlpp versions spring-promo && wp htmlpp restore spring-promo 20260827-171521-ab12cd34.html
+```
+
+## Claude Code
+
+The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`, or add this GitHub repository as a plugin marketplace.
+
+## PHP API
+
+`htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `delete_file()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.
 
 ## Hooks
 

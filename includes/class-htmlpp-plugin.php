@@ -33,11 +33,25 @@ final class HTMLPP_Plugin {
 	private static $instance = null;
 
 	/**
+	 * Page service — the API add-ons, REST and WP-CLI use.
+	 *
+	 * @var HTMLPP_Page_Service
+	 */
+	public $pages;
+
+	/**
 	 * Renderer instance.
 	 *
 	 * @var HTMLPP_Renderer
 	 */
 	public $renderer;
+
+	/**
+	 * REST controller.
+	 *
+	 * @var HTMLPP_REST
+	 */
+	public $rest;
 
 	/**
 	 * Settings instance (admin only).
@@ -83,8 +97,11 @@ final class HTMLPP_Plugin {
 	 * Wire hooks and instantiate subsystems.
 	 */
 	private function __construct() {
+		$this->pages = new HTMLPP_Page_Service();
+
 		// Renderer runs on all requests so it can intercept page serving.
 		$this->renderer = new HTMLPP_Renderer();
+		$this->rest     = new HTMLPP_REST();
 		new HTMLPP_Sitemap();
 
 		if ( is_admin() ) {
