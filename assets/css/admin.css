@@ -642,6 +642,8 @@ body.htmlpp-active.htmlpp-meta-ready #screen-meta-links {
 
 .htmlpp-url-pill__text {
 	overflow: hidden;
+	/* text-overflow only applies to non-wrapping text. */
+	white-space: nowrap;
 	text-overflow: ellipsis;
 	min-width: 0;
 	flex: 1 1 auto;

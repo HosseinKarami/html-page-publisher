@@ -344,12 +344,10 @@ foreach ( $pages as $htmlpp_p ) {
 										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_view_url ); ?>">
 											<span class="htmlpp-url-pill__text">
 												<?php
+												// A draft's preview URL carries a secret token, so the
+												// list shows a label and the button copies the URL.
 												if ( $htmlpp_is_draft ) {
-													printf(
-														/* translators: %s: preview URL */
-														esc_html__( 'Preview link: %s', 'html-page-publisher' ),
-														esc_html( $htmlpp_view_url )
-													);
+													esc_html_e( 'Preview link (drafts are not public)', 'html-page-publisher' );
 												} else {
 													echo esc_html( $htmlpp_page['url'] );
 												}
