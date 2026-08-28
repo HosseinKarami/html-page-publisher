@@ -227,13 +227,13 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 == Upgrade Notice ==
 
 = 1.5.0 =
-Your pages keep their URLs. Three things change if you are coming from 1.2.x: re-uploading to an existing slug now needs the "Replace the existing page" checkbox; the storage folder is locked down, so any link straight to /wp-content/uploads/html-page-publisher/... now redirects to the page's real URL; and pages get a canonical link (switch it off in Settings). Adds ZIP bundles, drafts with preview links, custom paths, analytics snippets, sitemap/noindex, a REST API and WP-CLI.
+Your pages keep their URLs. Coming from 1.2.x: replacing an existing page now needs an explicit checkbox, links into the uploads folder redirect to the page URL, and pages gain a canonical link (Settings). Adds ZIP bundles, drafts, custom paths, analytics snippets, sitemap and a REST API.
 
 = 1.4.0 =
 ZIP bundles, drafts with preview links, custom paths and front-page mapping, global analytics snippets, sitemap/noindex, rename and duplicate. Existing pages keep their URLs.
 
 = 1.3.0 =
-Storage folders are now protected from direct access, pages get real caching headers and a canonical URL. Existing pages keep their URLs. One behaviour change: re-uploading to an existing slug now requires ticking "Replace the existing page" instead of overwriting silently.
+Storage folders are now protected from direct access, pages get real caching headers and a canonical URL. Existing pages keep their URLs. One behaviour change: re-uploading to an existing slug now requires ticking a Replace checkbox instead of overwriting silently.
 
 = 1.2.0 =
 Edit published pages and manage their images right in the dashboard, with version history and one-click restore. Fully backward-compatible.

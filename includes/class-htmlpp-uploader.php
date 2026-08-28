@@ -17,8 +17,8 @@ class HTMLPP_Uploader {
 
 	/**
 	 * Image types accepted into a page's folder. Images are validated by
-	 * wp_handle_upload() (real MIME sniffing); other file types go through
-	 * move_plain_asset().
+	 * wp_handle_upload() (real MIME sniffing); other types are vetted by
+	 * extension and content first.
 	 *
 	 * @return array<string,string> wp_handle_upload() style mimes array.
 	 */
@@ -800,9 +800,10 @@ class HTMLPP_Uploader {
 	}
 
 	/**
-	 * Move a file into a page directory: images via WordPress (real MIME
-	 * sniffing + image validation), other whitelisted types via
-	 * move_plain_asset(). Blocked extensions are refused whatever a filter says.
+	 * Move a file into a page directory. Images are validated by WordPress
+	 * itself (real MIME sniffing); other whitelisted types are vetted by
+	 * extension and scanned for PHP first. Blocked extensions are refused
+	 * whatever a filter says.
 	 *
 	 * @param array  $single Normalized file array.
 	 * @param string $dir    Absolute destination directory.
@@ -834,46 +835,35 @@ class HTMLPP_Uploader {
 		foreach ( array_keys( self::allowed_image_mimes() ) as $key ) {
 			$image_exts = array_merge( $image_exts, explode( '|', (string) $key ) );
 		}
+		$is_image = in_array( $ext, $image_exts, true );
 
-		if ( in_array( $ext, $image_exts, true ) ) {
-			if ( ! function_exists( 'wp_handle_upload' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/file.php';
+		if ( $is_image ) {
+			// Images go through core's own validation, which sniffs the real
+			// MIME type and re-checks it against the extension.
+			$mimes = self::allowed_image_mimes();
+		} else {
+			$check = self::vet_plain_asset( $single, $ext );
+			if ( is_array( $check ) ) {
+				return $check;
 			}
-
-			$filter    = static function ( $dirs ) use ( $dir ) {
-				$dirs['path']   = $dir;
-				$dirs['url']    = '';
-				$dirs['subdir'] = '';
-				return $dirs;
-			};
-			$overrides = array(
-				'test_form' => false,
-				'mimes'     => self::allowed_image_mimes(),
-			);
-
-			add_filter( 'upload_dir', $filter );
-			$result = 'sideload' === $mode ? wp_handle_sideload( $single, $overrides ) : wp_handle_upload( $single, $overrides );
-			remove_filter( 'upload_dir', $filter );
-
-			return is_array( $result ) ? $result : array( 'error' => __( 'Upload failed.', 'html-page-publisher' ) );
+			$mimes = array( $ext => $check );
 		}
 
-		return self::move_plain_asset( $single, $dir, $ext, $mode );
+		return self::store_via_core( $single, $dir, $mode, $mimes, $is_image ? '' : $ext );
 	}
 
 	/**
-	 * Store a non-image asset (CSS, JS, font, media, PDF …).
+	 * Validate a non-image asset before it is stored.
 	 *
-	 * Validated by extension whitelist (never anything the renderer refuses
-	 * to serve) and a scan of the whole file for PHP open tags.
+	 * Core cannot sniff a real MIME type for CSS, JS or fonts (they are all
+	 * text/plain or application/octet-stream on disk), so the extension
+	 * whitelist plus a scan for PHP open tags is the check that matters.
 	 *
 	 * @param array  $single Normalized file array.
-	 * @param string $dir    Absolute destination directory.
 	 * @param string $ext    Lowercase extension.
-	 * @param string $mode   'upload' or 'sideload'.
-	 * @return array 'file' or 'error'.
+	 * @return string|array MIME type to declare, or an error array.
 	 */
-	private static function move_plain_asset( $single, $dir, $ext, $mode ) {
+	private static function vet_plain_asset( $single, $ext ) {
 		if ( ! in_array( $ext, HTMLPP_Zip::allowed_extensions(), true ) ) {
 			return array( 'error' => __( 'Sorry, this file type is not allowed.', 'html-page-publisher' ) );
 		}
@@ -884,21 +874,70 @@ class HTMLPP_Uploader {
 		}
 		unset( $content );
 
+		$map  = HTMLPP_Renderer::mime_map();
+		$mime = isset( $map[ $ext ] ) ? $map[ $ext ] : 'application/octet-stream';
+
+		// The mimes map wants a bare type, not the charset the renderer sends.
+		return trim( explode( ';', $mime )[0] );
+	}
+
+	/**
+	 * Hand the file to WordPress to store, pointed at the page's folder.
+	 *
+	 * Core performs the move, and assigns the unique filename and
+	 * permissions, so the plugin never handles the temporary file itself.
+	 *
+	 * @param array  $single    Normalized file array.
+	 * @param string $dir       Absolute destination directory.
+	 * @param string $mode      'upload' or 'sideload'.
+	 * @param array  $mimes     Extension => MIME map to accept.
+	 * @param string $trust_ext Non-image extension whose type the plugin has
+	 *                          already vetted ('' for images).
+	 * @return array 'file' or 'error'.
+	 */
+	private static function store_via_core( $single, $dir, $mode, array $mimes, $trust_ext = '' ) {
+		if ( ! function_exists( 'wp_handle_upload' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
 		if ( ! wp_mkdir_p( $dir ) ) {
 			return array( 'error' => __( 'The destination folder could not be created.', 'html-page-publisher' ) );
 		}
 
-		$name = wp_unique_filename( $dir, $single['name'] );
-		$dest = trailingslashit( $dir ) . $name;
+		$to_dir = static function ( $dirs ) use ( $dir ) {
+			$dirs['path']   = $dir;
+			$dirs['url']    = '';
+			$dirs['subdir'] = '';
+			return $dirs;
+		};
 
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Failure is reported below.
-		$moved = 'sideload' === $mode ? HTMLPP_Storage::move( $single['tmp_name'], $dest ) : @move_uploaded_file( $single['tmp_name'], $dest );
-		if ( ! $moved ) {
-			return array( 'error' => __( 'The file could not be moved into the page folder.', 'html-page-publisher' ) );
+		// CSS, JS and fonts have no distinguishing bytes, so core's sniffing
+		// returns nothing for them. The extension is already whitelisted and
+		// the contents already scanned, so supply the type it could not find.
+		$trust = static function ( $data, $file, $filename, $file_mimes ) use ( $trust_ext, $mimes ) {
+			unset( $file, $file_mimes );
+			if ( '' !== $trust_ext && empty( $data['ext'] ) && 0 === substr_compare( strtolower( (string) $filename ), '.' . $trust_ext, -strlen( $trust_ext ) - 1 ) ) {
+				$data['ext']  = $trust_ext;
+				$data['type'] = isset( $mimes[ $trust_ext ] ) ? $mimes[ $trust_ext ] : 'application/octet-stream';
+			}
+			return $data;
+		};
+
+		add_filter( 'upload_dir', $to_dir );
+		if ( '' !== $trust_ext ) {
+			add_filter( 'wp_check_filetype_and_ext', $trust, 10, 4 );
 		}
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod, WordPress.PHP.NoSilencedErrors.Discouraged -- Best effort.
-		@chmod( $dest, defined( 'FS_CHMOD_FILE' ) ? FS_CHMOD_FILE : 0644 );
 
-		return array( 'file' => $dest );
+		$overrides = array(
+			'test_form' => false,
+			'mimes'     => $mimes,
+		);
+		$result    = 'sideload' === $mode ? wp_handle_sideload( $single, $overrides ) : wp_handle_upload( $single, $overrides );
+
+		if ( '' !== $trust_ext ) {
+			remove_filter( 'wp_check_filetype_and_ext', $trust, 10 );
+		}
+		remove_filter( 'upload_dir', $to_dir );
+
+		return is_array( $result ) ? $result : array( 'error' => __( 'Upload failed.', 'html-page-publisher' ) );
 	}
 }

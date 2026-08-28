@@ -222,6 +222,60 @@ function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
 	return true;
 }
 
+/**
+ * Stand-in for core's upload handlers: honours the upload_dir filter, the
+ * mimes whitelist and unique filenames, then moves the file.
+ *
+ * @param array $file      Single-file array.
+ * @param array $overrides wp_handle_upload() overrides.
+ * @return array
+ */
+function htmlpp_test_handle_upload( $file, $overrides ) {
+	$dirs = apply_filters( 'upload_dir', array( 'path' => sys_get_temp_dir(), 'url' => '', 'subdir' => '' ) );
+	$dir  = $dirs['path'];
+	$ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+
+	$allowed = array();
+	foreach ( array_keys( isset( $overrides['mimes'] ) ? $overrides['mimes'] : array() ) as $key ) {
+		$allowed = array_merge( $allowed, explode( '|', (string) $key ) );
+	}
+	if ( ! in_array( $ext, $allowed, true ) ) {
+		return array( 'error' => 'Sorry, you are not allowed to upload this file type.' );
+	}
+	if ( ! is_readable( $file['tmp_name'] ) ) {
+		return array( 'error' => 'The file could not be read.' );
+	}
+	if ( ! is_dir( $dir ) ) {
+		mkdir( $dir, 0777, true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
+	}
+	$dest = rtrim( $dir, '/' ) . '/' . wp_unique_filename( $dir, $file['name'] );
+	if ( ! @rename( $file['tmp_name'], $dest ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename
+		return array( 'error' => 'The file could not be moved.' );
+	}
+	return array( 'file' => $dest );
+}
+
+function wp_handle_upload( $file, $overrides = array() ) {
+	return htmlpp_test_handle_upload( $file, $overrides );
+}
+
+function wp_handle_sideload( $file, $overrides = array() ) {
+	return htmlpp_test_handle_upload( $file, $overrides );
+}
+
+function remove_filter( $hook, $callback, $priority = 10 ) {
+	if ( empty( $GLOBALS['htmlpp_test_filters'][ $hook ] ) ) {
+		return false;
+	}
+	foreach ( $GLOBALS['htmlpp_test_filters'][ $hook ] as $i => $registered ) {
+		if ( $registered === $callback ) {
+			unset( $GLOBALS['htmlpp_test_filters'][ $hook ][ $i ] );
+			return true;
+		}
+	}
+	return false;
+}
+
 function wp_unique_filename( $dir, $filename ) {
 	$name = $filename;
 	$i    = 1;
