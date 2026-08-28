@@ -164,9 +164,10 @@ class HTMLPP_Renderer {
 			return;
 		}
 
-		// Refuse to serve anything with a dangerous extension.
+		// Refuse to serve anything with a dangerous extension, including a
+		// dangerous intermediate one ("logo.php.png" on AddHandler servers).
 		$ext = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
-		if ( in_array( $ext, self::BLOCKED_EXTENSIONS, true ) ) {
+		if ( self::is_blocked_extension( $ext ) || self::has_blocked_extension_part( basename( $file ) ) ) {
 			return;
 		}
 
@@ -183,23 +184,31 @@ class HTMLPP_Renderer {
 		 */
 		do_action( 'htmlpp_before_serve', $slug, $file, $match['rel'] );
 
-		// Canonical URL for the page itself is the trailing-slash form: the
-		// AI-generated HTML references "assets/…" relatively, which only
-		// resolves under /prefix/slug/ — not /prefix/slug.
-		if ( $is_page && ! $match['trailing_slash'] && self::is_safe_method() ) {
+		// A page's relative "assets/…" references only resolve under
+		// /prefix/slug/, so the trailing-slash form is canonical. Sites whose
+		// own permalinks omit the trailing slash get a <base> tag instead of a
+		// redirect, so the plugin never fights the site's (or an edge's) own
+		// canonicalisation.
+		$needs_slash = $is_page && ! $match['trailing_slash'];
+		if ( $needs_slash && self::is_safe_method() && self::should_redirect_to_slash() ) {
 			$target = $match['canonical'];
 			if ( '' !== $match['query'] ) {
 				$target .= '?' . $match['query'];
 			}
-			if ( $preview || has_action( 'htmlpp_before_serve' ) ) {
-				nocache_headers();
-			}
-			wp_safe_redirect( $target, 301, 'HTML Page Publisher' );
+			// Never cached: a permanent redirect here would be unrecoverable
+			// if it ever conflicts with an edge rule that strips the slash.
+			nocache_headers();
+			wp_safe_redirect( $target, 302, 'HTML Page Publisher' );
 			exit;
 		}
 
 		if ( $is_page ) {
-			self::stream_page( $file, $slug, $meta, $settings, $preview );
+			// Served without the trailing slash: give relative references a
+			// base so they still resolve.
+			// public_page_url() already resolves subdomain and custom-path forms;
+			// $match['canonical'] is a path, so it cannot be used directly.
+			$base = $needs_slash ? HTMLPP_Storage::public_page_url( $slug ) : '';
+			self::stream_page( $file, $slug, $meta, $settings, $preview, $base );
 		}
 
 		self::stream( $file, $ext, $slug, $preview, ! empty( $meta['noindex'] ) );
@@ -392,6 +401,31 @@ class HTMLPP_Renderer {
 		 * @param string $slug    Page slug.
 		 */
 		return (bool) apply_filters( 'htmlpp_can_preview', $allowed, $slug );
+	}
+
+	/**
+	 * Whether a page URL without its trailing slash should redirect.
+	 *
+	 * Disabled automatically when the site's own permalinks do not use a
+	 * trailing slash, so the plugin never fights the site's canonical form or
+	 * an edge rule that strips it.
+	 *
+	 * @return bool
+	 */
+	private static function should_redirect_to_slash() {
+		$structure = (string) get_option( 'permalink_structure' );
+		$redirect  = '' === $structure || '/' === substr( $structure, -1 );
+
+		/**
+		 * Filter whether /prefix/slug redirects to /prefix/slug/.
+		 *
+		 * Return false on sites whose CDN or web server strips trailing
+		 * slashes; the page is then served at either URL, with a <base> tag
+		 * added so its relative assets still resolve.
+		 *
+		 * @param bool $redirect Whether to send the canonical redirect.
+		 */
+		return (bool) apply_filters( 'htmlpp_canonical_redirect', $redirect );
 	}
 
 	/**
@@ -731,12 +765,17 @@ class HTMLPP_Renderer {
 	 * @param string $footer        Markup for the footer ('' to skip).
 	 * @param string $canonical_url Canonical URL to add when the page has none ('' to skip).
 	 * @param bool   $noindex       Add a robots noindex meta tag.
+	 * @param string $base_url      Base URL to add when the page has no <base> ('' to skip).
 	 * @return string
 	 */
-	public static function decorate( $html, $head, $footer, $canonical_url = '', $noindex = false ) {
+	public static function decorate( $html, $head, $footer, $canonical_url = '', $noindex = false, $base_url = '' ) {
 		$html = (string) $html;
 
 		$extra = '';
+		// A <base> must come before any relative reference, so it leads.
+		if ( '' !== $base_url && ! preg_match( '/<base\b[^>]*href=/i', $html ) ) {
+			$extra .= '<base href="' . esc_url( $base_url ) . "\">\n";
+		}
 		if ( $noindex ) {
 			$extra .= "<meta name=\"robots\" content=\"noindex, nofollow\">\n";
 		}
@@ -818,16 +857,17 @@ class HTMLPP_Renderer {
 	 * @param array  $meta     Page metadata.
 	 * @param array  $settings Plugin settings.
 	 * @param bool   $preview  Whether this is a draft preview.
+	 * @param string $base_url Base URL for relative references ('' to skip).
 	 * @return string
 	 */
-	public static function decorate_page( $html, $slug, array $meta, array $settings, $preview = false ) {
+	public static function decorate_page( $html, $slug, array $meta, array $settings, $preview = false, $base_url = '' ) {
 		$snippets = empty( $meta['no_snippets'] ) && ! $preview;
 		$head     = $snippets && ! empty( $settings['head_snippet'] ) ? (string) $settings['head_snippet'] : '';
 		$footer   = $snippets && ! empty( $settings['footer_snippet'] ) ? (string) $settings['footer_snippet'] : '';
 		$noindex  = ! empty( $meta['noindex'] ) || $preview;
 		$canon    = ! empty( $settings['canonical'] ) && ! $preview ? HTMLPP_Storage::public_page_url( $slug ) : '';
 
-		$html = self::decorate( $html, $head, $footer, $canon, $noindex );
+		$html = self::decorate( $html, $head, $footer, $canon, $noindex, $base_url );
 
 		/**
 		 * Filter a page's HTML right before it is sent.
@@ -960,13 +1000,14 @@ class HTMLPP_Renderer {
 	 * @param array  $meta     Page metadata.
 	 * @param array  $settings Plugin settings.
 	 * @param bool   $preview  Whether this is a draft preview.
+	 * @param string $base_url Base URL for relative references ('' to skip).
 	 */
-	private static function stream_page( $file, $slug, array $meta, array $settings, $preview ) {
+	private static function stream_page( $file, $slug, array $meta, array $settings, $preview, $base_url = '' ) {
 		$html = HTMLPP_Storage::get_contents( $file );
 		if ( false === $html ) {
 			return;
 		}
-		$html = self::decorate_page( $html, $slug, $meta, $settings, $preview );
+		$html = self::decorate_page( $html, $slug, $meta, $settings, $preview, $base_url );
 
 		$mtime = (int) filemtime( $file );
 		// The final output (snippets, filters, canonical) is what the client

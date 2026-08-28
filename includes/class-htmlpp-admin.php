@@ -134,7 +134,7 @@ class HTMLPP_Admin {
 	 * any output — then redirect so a browser refresh never re-submits.
 	 */
 	public function handle_actions() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( HTMLPP_Plugin::capability() ) ) {
 			return;
 		}
 
@@ -427,7 +427,7 @@ class HTMLPP_Admin {
 					'<p><strong>' . esc_html__( 'Where are uploaded pages stored?', 'html-page-publisher' ) . '</strong><br>' .
 					sprintf(
 						/* translators: %s: storage directory path */
-						esc_html__( 'In %s. Each page has its own folder with an index.html and an assets/ subfolder. Direct access to that folder is blocked; pages are only served at their public URL.', 'html-page-publisher' ),
+						esc_html__( 'In %s. Each page has its own folder with an index.html and an assets/ subfolder. The plugin blocks direct access to that folder so pages are only served at their public URL — Settings shows whether your web server honours it (nginx needs one extra rule).', 'html-page-publisher' ),
 						'<code>/' . esc_html( $storage ) . '/&lt;slug&gt;/</code>'
 					) . '</p>' .
 					'<p><strong>' . esc_html__( 'How does the subdomain feature work?', 'html-page-publisher' ) . '</strong><br>' .
@@ -435,7 +435,9 @@ class HTMLPP_Admin {
 					'<p><strong>' . esc_html__( 'Is it safe to upload arbitrary HTML?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'Only administrators (manage_options) can upload. HTML and SVG files are served as-is, including any <script> tags, so only upload files you trust.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Will uninstalling delete my pages?', 'html-page-publisher' ) . '</strong><br>' .
-					esc_html__( 'No. Uninstall removes settings but leaves uploaded files intact. Delete the uploads folder manually if you want them gone.', 'html-page-publisher' ) . '</p>' .
+					esc_html__( 'No. Uninstall removes the plugin’s settings but keeps your pages, their version history, and each page’s metadata (so a reinstall never republishes a former draft). Delete the two uploads folders manually if you want everything gone.', 'html-page-publisher' ) . '</p>' .
+					'<p><strong>' . esc_html__( 'Can I publish from a script or an AI agent?', 'html-page-publisher' ) . '</strong><br>' .
+					esc_html__( 'Yes. The plugin exposes a REST API at /wp-json/htmlpp/v1 (authenticate with an application password from Users → Profile), and WP-CLI commands under "wp htmlpp" when you have shell access.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Does it work with caching / CDNs?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'Yes. Pages are served with ETag and Last-Modified headers and answer conditional requests with 304, so browsers and CDNs revalidate cheaply. Edits show immediately. Use the htmlpp_cache_max_age filter to let CDNs cache the HTML itself.', 'html-page-publisher' ) . '</p>',
 			)

@@ -89,7 +89,7 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 				<?php elseif ( 'open' === $htmlpp_status ) : ?>
 					<p class="htmlpp-protection__status">
 						<strong><?php esc_html_e( 'Direct access is open.', 'html-page-publisher' ); ?></strong>
-						<?php esc_html_e( 'Your web server ignores the .htaccess rules the plugin writes (this is normal on nginx). Pages still work at their public URL, but the raw files can also be fetched from the uploads folder, bypassing the plugin’s caching and any access rules. Add this to your nginx server block and reload nginx:', 'html-page-publisher' ); ?>
+						<?php esc_html_e( 'Your web server is not honouring the .htaccess rules the plugin writes — usual on nginx, and also on Apache or LiteSpeed configured with AllowOverride None. Pages still work at their public URL, but the raw files can also be fetched from the uploads folder, bypassing the plugin’s caching and access rules. On nginx, add this to your server block and reload; on Apache, allow .htaccess overrides for the uploads directory or add the same rule to your vhost:', 'html-page-publisher' ); ?>
 					</p>
 					<pre class="htmlpp-code-block"><?php echo esc_html( $htmlpp_nginx ); ?></pre>
 				<?php else : ?>

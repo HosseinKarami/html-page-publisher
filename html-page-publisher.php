@@ -6,13 +6,11 @@
  * Version:           1.5.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
- * Tested up to:      7.1
  * Author:            Hossein Karami
  * Author URI:        https://hosseinkarami.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       html-page-publisher
- * Domain Path:       /languages
  *
  * @package HTMLPP
  */

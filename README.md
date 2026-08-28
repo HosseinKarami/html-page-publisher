@@ -95,7 +95,7 @@ wp htmlpp versions spring-promo && wp htmlpp restore spring-promo 20260827-17152
 
 ## Claude Code
 
-The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`, or add this GitHub repository as a plugin marketplace.
+The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`.
 
 ## PHP API
 

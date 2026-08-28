@@ -134,6 +134,19 @@ final class HTMLPP_Plugin {
 			add_option( 'htmlpp_installed_at', time() );
 		}
 
+		// Pre-1.4.0 installs never stored a canonical preference. Only opt them
+		// in where the canonical can point at the host their pages already
+		// serve from: a subdomain may have been saved without the DNS and
+		// vhost work ever being finished, and pointing a live page's canonical
+		// at a host that does not resolve is a de-indexing instruction.
+		if ( '' === $stored ) {
+			$settings = get_option( HTMLPP_Settings::OPTION, array() );
+			if ( is_array( $settings ) && ! array_key_exists( 'canonical', $settings ) ) {
+				$settings['canonical'] = empty( $settings['subdomain'] );
+				update_option( HTMLPP_Settings::OPTION, $settings );
+			}
+		}
+
 		update_option( self::VERSION_OPTION, HTMLPP_VERSION );
 
 		/**
@@ -143,6 +156,54 @@ final class HTMLPP_Plugin {
 		 * @param string $to   Current plugin version.
 		 */
 		do_action( 'htmlpp_upgraded', $from, HTMLPP_VERSION );
+	}
+
+	/**
+	 * Capability required to reach the plugin's screens and API.
+	 *
+	 * @return string
+	 */
+	public static function capability() {
+		/**
+		 * Filter the capability required to manage HTML pages.
+		 *
+		 * @param string $capability Defaults to 'manage_options'.
+		 */
+		return (string) apply_filters( 'htmlpp_capability', 'manage_options' );
+	}
+
+	/**
+	 * Whether the current user may write raw page markup.
+	 *
+	 * A published page is unfiltered HTML — it can carry <script> — so writing
+	 * one is the same trust level WordPress calls `unfiltered_html`. On
+	 * multisite that is a super-admin capability, so a site administrator has
+	 * `manage_options` without it; requiring both keeps the plugin inside
+	 * WordPress's own boundary instead of widening it.
+	 *
+	 * @return bool
+	 */
+	public static function can_write_markup() {
+		/**
+		 * Filter whether writing page markup additionally requires
+		 * `unfiltered_html`. Return false on a hardened single-site install
+		 * that sets DISALLOW_UNFILTERED_HTML but still publishes pages here.
+		 *
+		 * @param bool $require Defaults to true.
+		 */
+		$require = (bool) apply_filters( 'htmlpp_require_unfiltered_html', true );
+
+		return current_user_can( self::capability() )
+			&& ( ! $require || current_user_can( 'unfiltered_html' ) );
+	}
+
+	/**
+	 * Message shown when a user may manage pages but not write markup.
+	 *
+	 * @return string
+	 */
+	public static function markup_denied_message() {
+		return __( 'Your account cannot publish raw HTML on this site: that needs the unfiltered_html capability, which on a multisite network only network administrators have. Ask a network administrator to publish the page, or to grant the capability.', 'html-page-publisher' );
 	}
 
 	/**

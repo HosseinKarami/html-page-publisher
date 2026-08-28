@@ -100,6 +100,27 @@ class ZipTest extends TestCase {
 		$this->assertFileDoesNotExist( $this->tmp . '/dest/b.css', 'The entry that broke the cap must not be left behind.' );
 	}
 
+	public function test_archive_with_directory_entries_finds_the_index() {
+		// `zip -r` and Finder write directory records, so the archive indices
+		// of the real files are not 0,1,2… — the index lookup must survive that.
+		$path = $this->tmp . '/dirs.zip';
+		$zip  = new ZipArchive();
+		$zip->open( $path, ZipArchive::CREATE );
+		$zip->addEmptyDir( 'my-site' );
+		$zip->addFromString( 'my-site/index.html', '<html><body>real</body></html>' );
+		$zip->addEmptyDir( 'my-site/css' );
+		$zip->addFromString( 'my-site/css/s.css', 'body{}' );
+		$zip->close();
+
+		$r = HTMLPP_Zip::import( $path, $this->tmp . '/dest' );
+
+		$this->assertTrue( $r['ok'], $r['error'] );
+		$this->assertSame( '<html><body>real</body></html>', $r['index_html'] );
+		$this->assertSame( array( 'css/s.css' ), $r['written'] );
+		$this->assertFileDoesNotExist( $this->tmp . '/dest/index.html', 'index.html is returned, never written' );
+		$this->assertFileExists( $this->tmp . '/dest/css/s.css' );
+	}
+
 	public function test_traversal_and_absolute_entries_are_skipped() {
 		$zip = $this->make_zip(
 			array(

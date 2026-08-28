@@ -25,7 +25,7 @@ It is built for the "I made this page with an AI tool, now how do I get it onto 
 * **Global snippets**: add GA4/GTM/pixel, fonts or a consent banner to every page from Settings (pages can opt out)
 * **SEO**: pages are listed in the WordPress XML sitemap, can be marked noindex, and get a canonical link
 * **Rename and duplicate**: change a slug (the old URL redirects) or copy a page as a new draft
-* **REST API and WP-CLI**: publish from scripts, CI, or an AI agent — `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`. A Claude Code skill is included in the GitHub repository.
+* **REST API and WP-CLI**: publish from scripts, CI, or an AI agent — `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`. A Claude Code skill is included in the [GitHub repository](https://github.com/HosseinKarami/html-page-publisher).
 * **Built-in HTML editor**: edit a published page in the dashboard with the native WordPress code editor (syntax highlighting)
 * **Version history**: every save keeps the previous version; restore any earlier version with one click (restoring is itself undoable)
 * **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
@@ -83,7 +83,7 @@ Yes. The plugin exposes a REST API at `/wp-json/htmlpp/v1` (list, create/replace
 
 `curl -u "admin:xxxx xxxx xxxx xxxx" -F slug=spring-promo -F file=@index.html https://example.com/wp-json/htmlpp/v1/pages`
 
-With shell access, `wp htmlpp publish spring-promo ./site.zip --overwrite` does the same. The GitHub repository ships a Claude Code skill (`skills/publish-to-wordpress`) so Claude can publish a page it just generated.
+With shell access, `wp htmlpp publish spring-promo ./site.zip --overwrite` does the same. The [GitHub repository](https://github.com/HosseinKarami/html-page-publisher) ships a Claude Code skill (`skills/publish-to-wordpress`) so Claude can publish a page it just generated.
 
 = Which AI tools does it work with? =
 
@@ -95,7 +95,7 @@ In `wp-content/uploads/html-page-publisher/<slug>/`. Each page has its own direc
 
 = I use nginx. Is my storage folder protected? =
 
-nginx ignores `.htaccess`. Pages still work at their public URL, but the raw files could also be fetched from the uploads folder. **HTML Pages → Settings** shows whether direct access is blocked and gives you a two-line `location` block to add to your nginx server configuration.
+nginx ignores `.htaccess`. Pages still work at their public URL, but the raw files could also be fetched from the uploads folder. **HTML Pages → Settings** shows whether direct access is blocked and gives you a ready-made `location` block to add to your nginx server configuration. The same applies to Apache or LiteSpeed configured with `AllowOverride None`.
 
 = How do I edit a page or change its files after publishing? =
 
@@ -170,6 +170,8 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * New: Hooks — `htmlpp_page_meta`, `htmlpp_page_meta_defaults`, `htmlpp_page_meta_updated`, `htmlpp_page_status_changed`, `htmlpp_page_created`, `htmlpp_page_renamed`, `htmlpp_page_copied`, `htmlpp_page_duplicated`, `htmlpp_page_html`, `htmlpp_can_preview`, `htmlpp_zip_imported`, `htmlpp_assets_uploaded`, `htmlpp_asset_replaced`, `htmlpp_asset_deleted`, `htmlpp_sitemap_entries`, `htmlpp_reserved_paths`, `htmlpp_path_collides`, `htmlpp_home_reserved_query_vars`, `htmlpp_zip_allowed_extensions`, `htmlpp_zip_max_bytes`, `htmlpp_zip_max_files`.
 * Security: ZIP entries are streamed under a size cap, names with executable intermediate extensions are refused, and every entry (not only text files) is scanned for PHP code. Blocked extensions now cover php3–php8, phtm, phps, phar, inc and shtml.
 * Improved: Deleting a page also removes redirects that pointed at it; uninstall keeps page metadata so a reinstall never publishes former drafts.
+* Improved: Links straight to `/wp-content/uploads/html-page-publisher/...` now redirect to the page’s real URL instead of breaking, and `/pages/your-slug` (no trailing slash) redirects only when your site’s permalinks use trailing slashes — otherwise the page is served with a `<base>` tag so its assets still resolve. Both are filterable (`htmlpp_canonical_redirect`).
+* Security: Publishing raw HTML now also requires the `unfiltered_html` capability, so a multisite site administrator cannot inject scripts a network administrator has not allowed. Override with `htmlpp_require_unfiltered_html` on hardened single-site installs.
 
 = 1.3.0 =
 * Security: Pages are now only reachable at their public URL. The storage and version-history folders get an `.htaccess` that denies direct access, and Settings shows whether your web server honours it (with an nginx snippet if it does not).
@@ -204,6 +206,7 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Security: Editing and image actions reuse the existing nonce, `manage_options`, MIME-whitelist, and realpath path-traversal protections; backups are stored outside the publicly served directory.
 
 = 1.1.0 =
+* New: A one-time, dismissible request for a WordPress.org review, shown only after you have published a few pages.
 * New: Branded admin footer with author attribution, support, and donate links.
 * New: Contextual Help tab on plugin admin pages (Overview, FAQ, Support).
 * New: Settings and Donate links added to the WordPress plugins list (action links and row meta).
@@ -224,7 +227,7 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 == Upgrade Notice ==
 
 = 1.5.0 =
-REST API and WP-CLI for publishing from scripts and AI agents; no changes to existing pages or URLs.
+Your pages keep their URLs. Three things change if you are coming from 1.2.x: re-uploading to an existing slug now needs the "Replace the existing page" checkbox; the storage folder is locked down, so any link straight to /wp-content/uploads/html-page-publisher/... now redirects to the page's real URL; and pages get a canonical link (switch it off in Settings). Adds ZIP bundles, drafts with preview links, custom paths, analytics snippets, sitemap/noindex, a REST API and WP-CLI.
 
 = 1.4.0 =
 ZIP bundles, drafts with preview links, custom paths and front-page mapping, global analytics snippets, sitemap/noindex, rename and duplicate. Existing pages keep their URLs.

@@ -21,6 +21,17 @@ class HTMLPP_Settings {
 	 */
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'register' ) );
+		// The storage .htaccess redirects legacy links to the prefix URL, so
+		// it has to be rewritten whenever that prefix changes.
+		add_action( 'update_option_' . self::OPTION, array( __CLASS__, 'refresh_protection' ) );
+	}
+
+	/**
+	 * Rewrite the storage protection files after a settings change.
+	 */
+	public static function refresh_protection() {
+		HTMLPP_Storage::ensure_dir();
+		delete_transient( HTMLPP_Storage::PROTECTION_TRANSIENT );
 	}
 
 	/**

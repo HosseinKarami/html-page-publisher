@@ -183,13 +183,12 @@ class HTMLPP_Storage {
 	 * subdomain, caching headers and every future per-page control apply)
 	 * and version-history snapshots must never be public.
 	 *
+	 * @param string $context 'pages' (redirect legacy links to the page URL)
+	 *                        or 'backups' (deny outright).
 	 * @return string
 	 */
-	public static function htaccess_rules() {
-		$rules = self::HTACCESS_HEADER
-			. "# Files in this directory are served by WordPress at their public page URL.\n"
-			. "# Direct access is denied so the plugin's URL, caching and access rules always apply.\n"
-			. "<IfModule mod_authz_core.c>\n"
+	public static function htaccess_rules( $context = 'backups' ) {
+		$deny = "<IfModule mod_authz_core.c>\n"
 			. "\tRequire all denied\n"
 			. "</IfModule>\n"
 			. "<IfModule !mod_authz_core.c>\n"
@@ -197,12 +196,43 @@ class HTMLPP_Storage {
 			. "\tDeny from all\n"
 			. "</IfModule>\n";
 
+		if ( 'pages' === $context ) {
+			// Pages are public — just not from here. Send legacy links straight
+			// to the page's real URL instead of breaking them, and forbid
+			// everything else in the folder. (mod_rewrite runs at fixup, after
+			// authz, so a Require rule would pre-empt the redirect; the deny is
+			// therefore only the fallback for servers without mod_rewrite.)
+			// Absolute, so Apache cannot rebuild the URL on the wrong scheme
+			// (behind a TLS-terminating proxy it would emit http://).
+			$settings = HTMLPP_Settings::get_settings();
+			$base     = untrailingslashit( home_url( '/' . trim( (string) $settings['url_prefix'], '/' ) ) );
+
+			$rules = self::HTACCESS_HEADER
+				. "# Pages are served by WordPress at their public URL.\n"
+				. "# Links straight to this folder are redirected there; nothing else is public.\n"
+				. "<IfModule mod_rewrite.c>\n"
+				. "\tRewriteEngine On\n"
+				. "\tRewriteRule ^(index\.html)$ - [F,L]\n"
+				. "\tRewriteRule ^([^/]+)/(.+)$ " . $base . "/$1/$2 [R=301,L,NE]\n"
+				. "\tRewriteRule ^([^/]+)/?$ " . $base . "/$1/ [R=301,L,NE]\n"
+				. "\tRewriteRule ^ - [F,L]\n"
+				. "</IfModule>\n"
+				. "<IfModule !mod_rewrite.c>\n"
+				. $deny
+				. "</IfModule>\n";
+		} else {
+			$rules = self::HTACCESS_HEADER
+				. "# Version-history snapshots are never public.\n"
+				. $deny;
+		}
+
 		/**
-		 * Filter the .htaccess contents written into the storage directories.
+		 * Filter the .htaccess contents written into a storage directory.
 		 *
-		 * @param string $rules Apache directives.
+		 * @param string $rules   Apache directives.
+		 * @param string $context 'pages' or 'backups'.
 		 */
-		return (string) apply_filters( 'htmlpp_htaccess_rules', $rules );
+		return (string) apply_filters( 'htmlpp_htaccess_rules', $rules, $context );
 	}
 
 	/**
@@ -210,10 +240,11 @@ class HTMLPP_Storage {
 	 * (an empty index.html against directory listings and an .htaccess that
 	 * denies direct access on Apache/LiteSpeed).
 	 *
-	 * @param string $dir Absolute directory path.
+	 * @param string $dir     Absolute directory path.
+	 * @param string $context 'pages' or 'backups' (selects the rule set).
 	 * @return bool True if the directory exists (or was created).
 	 */
-	public static function protect_dir( $dir ) {
+	public static function protect_dir( $dir, $context = 'backups' ) {
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
 			return false;
 		}
@@ -224,7 +255,7 @@ class HTMLPP_Storage {
 		}
 
 		$htaccess = trailingslashit( $dir ) . '.htaccess';
-		$rules    = self::htaccess_rules();
+		$rules    = self::htaccess_rules( $context );
 		if ( '' === $rules ) {
 			// Opt-out via the filter: remove the file this plugin wrote (it is
 			// identified by its header) so server-level rules take over. A
@@ -245,8 +276,8 @@ class HTMLPP_Storage {
 	 * Create the storage and backups directories with their protection files.
 	 */
 	public static function ensure_dir() {
-		self::protect_dir( self::base_dir() );
-		self::protect_dir( self::backups_base_dir() );
+		self::protect_dir( self::base_dir(), 'pages' );
+		self::protect_dir( self::backups_base_dir(), 'backups' );
 	}
 
 	/**

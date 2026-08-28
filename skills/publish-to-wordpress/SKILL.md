@@ -40,7 +40,8 @@ EOF
 Keep the site URL in the command itself (it is not a secret). Verify access:
 
 ```bash
-curl -s -K /tmp/htmlpp.curl "https://example.com/wp-json/htmlpp/v1/pages"
+curl -s -o /tmp/htmlpp.out -w '%{http_code}\n' -K /tmp/htmlpp.curl \
+  "https://example.com/wp-json/htmlpp/v1/pages"
 ```
 
 Delete `/tmp/htmlpp.curl` when you are done.
@@ -119,8 +120,9 @@ user**, and mention anything in `skipped`/`file_errors`.
   serves everything under the page's own URL.
 - Forms inside static HTML do not submit anywhere by themselves; say so if
   the page contains one.
-- Executable files (`.php`, …) are never stored; the API lists them in
-  `skipped`.
+- Executable files (`.php`, …) are never stored. ZIP entries that were refused
+  are listed in `skipped`; rejected `files[]` uploads appear in `file_errors`
+  (or `errors` on `POST /pages/{slug}/files`). Check both.
 - WP-CLI is an alternative when you have shell access to the site:
   `wp htmlpp publish spring-promo ./site.zip --overwrite`. Note WP-CLI reserves
   `--path`, so the custom-path flag is `--url-path` (e.g.

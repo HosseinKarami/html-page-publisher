@@ -53,6 +53,18 @@ function trailingslashit( $value ) {
 	return rtrim( $value, '/\\' ) . '/';
 }
 
+function untrailingslashit( $value ) {
+	return rtrim( (string) $value, '/\\' );
+}
+
+function current_user_can( $capability ) {
+	return ! empty( $GLOBALS['htmlpp_test_caps'][ $capability ] );
+}
+
+function did_action( $hook ) {
+	return 0;
+}
+
 function home_url( $path = '' ) {
 	return rtrim( $GLOBALS['htmlpp_test_home'] ?? 'https://example.com', '/' ) . $path;
 }
@@ -247,6 +259,7 @@ function htmlpp() {
 
 define( 'HTMLPP_PLUGIN_FILE', dirname( __DIR__ ) . '/html-page-publisher.php' );
 
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-plugin.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-settings.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-meta.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-storage.php';

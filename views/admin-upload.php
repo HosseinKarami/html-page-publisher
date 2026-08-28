@@ -22,6 +22,7 @@ $htmlpp_editing_off  = HTMLPP_Uploader::file_editing_disabled();
 $htmlpp_protection   = get_transient( HTMLPP_Storage::PROTECTION_TRANSIENT );
 $htmlpp_protection   = is_array( $htmlpp_protection ) && isset( $htmlpp_protection['status'] ) ? $htmlpp_protection['status'] : 'unknown';
 $htmlpp_accept       = HTMLPP_Uploader::accept_attribute();
+$htmlpp_zip_ok       = class_exists( 'ZipArchive' );
 $htmlpp_published    = 0;
 foreach ( $pages as $htmlpp_p ) {
 	if ( empty( $htmlpp_p['meta'] ) || HTMLPP_Meta::is_public( $htmlpp_p['meta'] ) ) {
@@ -190,9 +191,11 @@ foreach ( $pages as $htmlpp_p ) {
 					</div>
 
 					<div class="htmlpp-field">
-						<label class="htmlpp-field__label" for="html_file"><?php esc_html_e( 'HTML file or ZIP bundle', 'html-page-publisher' ); ?></label>
+						<label class="htmlpp-field__label" for="html_file">
+							<?php $htmlpp_zip_ok ? esc_html_e( 'HTML file or ZIP bundle', 'html-page-publisher' ) : esc_html_e( 'HTML file', 'html-page-publisher' ); ?>
+						</label>
 						<div class="htmlpp-dropzone">
-							<input type="file" id="html_file" name="html_file" accept=".html,.htm,.zip" required />
+							<input type="file" id="html_file" name="html_file" accept="<?php echo esc_attr( $htmlpp_zip_ok ? '.html,.htm,.zip' : '.html,.htm' ); ?>" required />
 							<span class="htmlpp-dropzone__icon" aria-hidden="true">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -202,11 +205,17 @@ foreach ( $pages as $htmlpp_p ) {
 							</span>
 							<span class="htmlpp-dropzone__body">
 								<span class="htmlpp-dropzone__title"><?php esc_html_e( 'Click or drag to upload', 'html-page-publisher' ); ?></span>
-								<span class="htmlpp-dropzone__hint"><?php esc_html_e( '.html, .htm, or a .zip with index.html + css/js/images', 'html-page-publisher' ); ?></span>
+								<span class="htmlpp-dropzone__hint">
+									<?php $htmlpp_zip_ok ? esc_html_e( '.html, .htm, or a .zip with index.html + css/js/images', 'html-page-publisher' ) : esc_html_e( '.html or .htm file', 'html-page-publisher' ); ?>
+								</span>
 							</span>
 						</div>
 						<p class="htmlpp-field__help">
-							<?php esc_html_e( 'A standalone HTML file, or a ZIP of an exported site folder (index.html at the top level, assets in subfolders). Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ); ?>
+							<?php if ( $htmlpp_zip_ok ) : ?>
+								<?php esc_html_e( 'A standalone HTML file, or a ZIP of an exported site folder (index.html at the top level, assets in subfolders). Claude Design’s export-time runtime wrappers are stripped automatically.', 'html-page-publisher' ); ?>
+							<?php else : ?>
+								<?php esc_html_e( 'A standalone HTML file. Claude Design’s export-time runtime wrappers are stripped automatically. ZIP bundles need PHP’s ZipArchive extension, which this server does not have — upload the HTML and its files separately.', 'html-page-publisher' ); ?>
+							<?php endif; ?>
 						</p>
 					</div>
 
@@ -298,7 +307,7 @@ foreach ( $pages as $htmlpp_p ) {
 							</svg>
 						</div>
 						<p class="htmlpp-empty__title"><?php esc_html_e( 'No pages yet', 'html-page-publisher' ); ?></p>
-						<p class="htmlpp-empty__body"><?php esc_html_e( 'Upload an HTML file on the left to publish your first page.', 'html-page-publisher' ); ?></p>
+						<p class="htmlpp-empty__body"><?php esc_html_e( 'Use the Upload New Page form to publish your first page.', 'html-page-publisher' ); ?></p>
 					</div>
 				<?php else : ?>
 					<div class="htmlpp-table-scroll">
@@ -333,7 +342,19 @@ foreach ( $pages as $htmlpp_p ) {
 											<span class="htmlpp-page-title" title="<?php echo esc_attr( $htmlpp_page['title'] ); ?>"><?php echo esc_html( $htmlpp_page['title'] ); ?></span>
 										<?php endif; ?>
 										<span class="htmlpp-url-pill" title="<?php echo esc_attr( $htmlpp_view_url ); ?>">
-											<span class="htmlpp-url-pill__text"><?php echo esc_html( $htmlpp_is_draft ? __( 'Preview link', 'html-page-publisher' ) . ': ' . $htmlpp_view_url : $htmlpp_page['url'] ); ?></span>
+											<span class="htmlpp-url-pill__text">
+												<?php
+												if ( $htmlpp_is_draft ) {
+													printf(
+														/* translators: %s: preview URL */
+														esc_html__( 'Preview link: %s', 'html-page-publisher' ),
+														esc_html( $htmlpp_view_url )
+													);
+												} else {
+													echo esc_html( $htmlpp_page['url'] );
+												}
+												?>
+											</span>
 											<button type="button" class="htmlpp-copy-btn" data-url="<?php echo esc_attr( $htmlpp_view_url ); ?>" aria-label="<?php echo esc_attr( $htmlpp_is_draft ? __( 'Copy preview link', 'html-page-publisher' ) : __( 'Copy URL', 'html-page-publisher' ) ); ?>">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>

@@ -44,10 +44,26 @@ class HTMLPP_REST {
 	 * @return bool|WP_Error
 	 */
 	public function permission() {
-		if ( current_user_can( 'manage_options' ) ) {
+		if ( current_user_can( HTMLPP_Plugin::capability() ) ) {
 			return true;
 		}
 		return new WP_Error( 'htmlpp_forbidden', __( 'You need the manage_options capability to manage HTML pages.', 'html-page-publisher' ), array( 'status' => rest_authorization_required_code() ) );
+	}
+
+	/**
+	 * Permission check for routes that write raw page markup.
+	 *
+	 * @return bool|WP_Error
+	 */
+	public function permission_write() {
+		$allowed = $this->permission();
+		if ( is_wp_error( $allowed ) ) {
+			return $allowed;
+		}
+		if ( HTMLPP_Plugin::can_write_markup() ) {
+			return true;
+		}
+		return new WP_Error( 'htmlpp_forbidden', HTMLPP_Plugin::markup_denied_message(), array( 'status' => rest_authorization_required_code() ) );
 	}
 
 	/**
@@ -81,7 +97,7 @@ class HTMLPP_REST {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'create_page' ),
-					'permission_callback' => array( $this, 'permission' ),
+					'permission_callback' => array( $this, 'permission_write' ),
 					'args'                => array(
 						'slug'      => $this->slug_arg(),
 						'html'      => array( 'type' => 'string' ),
@@ -117,7 +133,7 @@ class HTMLPP_REST {
 				array(
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'update_page' ),
-					'permission_callback' => array( $this, 'permission' ),
+					'permission_callback' => array( $this, 'permission_write' ),
 					'args'                => array(
 						'html'        => array( 'type' => 'string' ),
 						'status'      => array(
@@ -144,7 +160,7 @@ class HTMLPP_REST {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'duplicate_page' ),
-				'permission_callback' => array( $this, 'permission' ),
+				'permission_callback' => array( $this, 'permission_write' ),
 				'args'                => array(
 					'new_slug' => array(
 						'type'     => 'string',
@@ -183,7 +199,7 @@ class HTMLPP_REST {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'add_files' ),
-					'permission_callback' => array( $this, 'permission' ),
+					'permission_callback' => array( $this, 'permission_write' ),
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
@@ -226,7 +242,7 @@ class HTMLPP_REST {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'restore' ),
-				'permission_callback' => array( $this, 'permission' ),
+				'permission_callback' => array( $this, 'permission_write' ),
 			)
 		);
 	}

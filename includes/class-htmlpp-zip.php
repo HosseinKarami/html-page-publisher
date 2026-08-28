@@ -204,7 +204,14 @@ class HTMLPP_Zip {
 			$entries[ $i ]['rel'] = '' === $prefix ? $entry['name'] : substr( $entry['name'], strlen( $prefix ) );
 		}
 
-		$index_key = self::find_index( array_column( $entries, 'rel', null ) );
+		// Keep the archive indices as keys: array_column() would renumber them
+		// and the extraction loop below matches on the archive index.
+		$rels = array();
+		foreach ( $entries as $i => $entry ) {
+			$rels[ $i ] = $entry['rel'];
+		}
+
+		$index_key = self::find_index( $rels );
 		if ( null === $index_key ) {
 			$zip->close();
 			$result['error'] = __( 'No index.html was found at the top level of the ZIP. Put the page’s HTML file at the root (or in a single folder) and name it index.html.', 'html-page-publisher' );

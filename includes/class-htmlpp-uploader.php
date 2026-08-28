@@ -129,9 +129,13 @@ class HTMLPP_Uploader {
 	 * @return array|null Notice (type, message, raw_html, slug) or null if no action.
 	 */
 	public static function handle_request() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( HTMLPP_Plugin::capability() ) ) {
 			return null;
 		}
+
+		// Branches that write raw page markup need the unfiltered_html trust
+		// level; managing existing pages (delete, settings, preview) does not.
+		$writes_markup = array( 'htmlpp_upload', 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_duplicate' );
 
 		$handlers = array(
 			'htmlpp_delete'        => 'handle_delete',
@@ -148,9 +152,16 @@ class HTMLPP_Uploader {
 
 		foreach ( $handlers as $key => $method ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Dispatch only; nonce verified inside each handler.
-			if ( isset( $_POST[ $key ] ) ) {
-				return call_user_func( array( __CLASS__, $method ) );
+			if ( ! isset( $_POST[ $key ] ) ) {
+				continue;
 			}
+			if ( in_array( $key, $writes_markup, true ) && ! HTMLPP_Plugin::can_write_markup() ) {
+				return array(
+					'type'    => 'error',
+					'message' => HTMLPP_Plugin::markup_denied_message(),
+				);
+			}
+			return call_user_func( array( __CLASS__, $method ) );
 		}
 
 		return null;
@@ -812,6 +823,11 @@ class HTMLPP_Uploader {
 		}
 		if ( HTMLPP_Renderer::is_blocked_extension( $ext ) || HTMLPP_Renderer::has_blocked_extension_part( $single['name'] ) ) {
 			return array( 'error' => __( 'Sorry, this file type is not allowed.', 'html-page-publisher' ) );
+		}
+
+		// SVG is markup: it is served from the site origin and can carry script.
+		if ( 'svg' === $ext && did_action( 'admin_init' ) && ! HTMLPP_Plugin::can_write_markup() ) {
+			return array( 'error' => HTMLPP_Plugin::markup_denied_message() );
 		}
 
 		$image_exts = array();
