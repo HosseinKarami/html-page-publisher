@@ -1259,18 +1259,182 @@ body.htmlpp-active.htmlpp-meta-ready #screen-meta-links {
 	color: #1e293b;
 }
 
-.htmlpp-page .htmlpp-review-notice {
-	border-left-color: #6366f1;
+/* Review request: a plugin card rather than a stock WP notice. Keeps the
+ * .notice class so WordPress places it below the hero and adds the X. */
+body.htmlpp-active .notice.htmlpp-review-notice {
+	display: flex;
+	align-items: center;
+	gap: 14px 16px;
+	margin: 0 0 20px;
+	padding: 16px 52px 16px 18px;
+	background: var(--htmlpp-card);
+	border: 1px solid var(--htmlpp-border);
+	border-radius: var(--htmlpp-radius);
+	box-shadow: var(--htmlpp-shadow);
+	color: var(--htmlpp-text);
 }
 
-.htmlpp-page .htmlpp-review-notice p {
-	margin: 0.5em 0;
+.htmlpp-review-notice__icon {
+	flex: 0 0 auto;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--htmlpp-accent-soft);
+	border-radius: 8px;
+	color: var(--htmlpp-accent);
 }
 
-.htmlpp-page .htmlpp-review-notice .button-link {
-	margin-left: 8px;
-	color: #64748b;
-	text-decoration: underline;
+.htmlpp-review-notice__icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.htmlpp-review-notice__body {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+body.htmlpp-active .htmlpp-review-notice .htmlpp-review-notice__title {
+	margin: 0;
+	padding: 0;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--htmlpp-text);
+}
+
+body.htmlpp-active .htmlpp-review-notice .htmlpp-review-notice__text {
+	margin: 2px 0 0;
+	padding: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--htmlpp-text-muted);
+}
+
+.htmlpp-review-notice__actions {
+	flex: 0 0 auto;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 10px;
+}
+
+/* WordPress styles links inside notices (blue, underlined); restate the
+ * plugin buttons with enough weight to win. */
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-ghost {
+	text-decoration: none;
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary:hover,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary:focus {
+	color: #fff;
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary:hover,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary:focus {
+	background: var(--htmlpp-accent-hover);
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-ghost {
+	color: var(--htmlpp-text);
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-ghost:hover,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-ghost:focus {
+	border-color: var(--htmlpp-accent);
+	color: var(--htmlpp-accent);
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-primary:focus-visible,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-button-ghost:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 3px var(--htmlpp-accent-ring);
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-review-notice__never {
+	margin-left: 4px;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--htmlpp-text-muted);
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+	transition: color 0.12s, border-color 0.12s;
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-review-notice__never:hover,
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-review-notice__never:focus {
+	color: var(--htmlpp-accent);
+	border-bottom-color: currentColor;
+	box-shadow: none;
+	outline: none;
+}
+
+body.htmlpp-active .htmlpp-review-notice a.htmlpp-review-notice__never:focus-visible {
+	border-radius: 2px;
+	box-shadow: 0 0 0 3px var(--htmlpp-accent-ring);
+}
+
+/* WordPress's X, redrawn as a quiet square button. */
+body.htmlpp-active .htmlpp-review-notice .notice-dismiss {
+	top: 50%;
+	right: 12px;
+	width: 30px;
+	height: 30px;
+	margin-top: -15px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--htmlpp-radius-sm);
+	color: var(--htmlpp-text-faint);
+	transition: background 0.12s, color 0.12s;
+}
+
+body.htmlpp-active .htmlpp-review-notice .notice-dismiss:before {
+	color: inherit;
+}
+
+body.htmlpp-active .htmlpp-review-notice .notice-dismiss:hover,
+body.htmlpp-active .htmlpp-review-notice .notice-dismiss:focus {
+	background: var(--htmlpp-bg);
+	color: var(--htmlpp-text);
+	box-shadow: none;
+	outline: none;
+}
+
+body.htmlpp-active .htmlpp-review-notice .notice-dismiss:focus-visible {
+	box-shadow: 0 0 0 3px var(--htmlpp-accent-ring);
+}
+
+@media (max-width: 960px) {
+	body.htmlpp-active .notice.htmlpp-review-notice {
+		flex-wrap: wrap;
+		align-items: flex-start;
+	}
+
+	.htmlpp-review-notice__body {
+		flex-basis: calc(100% - 52px);
+	}
+
+	.htmlpp-review-notice__actions {
+		flex-basis: 100%;
+		padding-left: 52px;
+	}
+
+	body.htmlpp-active .htmlpp-review-notice .notice-dismiss {
+		top: 12px;
+		margin-top: 0;
+	}
+}
+
+@media (max-width: 520px) {
+	.htmlpp-review-notice__actions {
+		padding-left: 0;
+	}
 }
 
 .htmlpp-page .htmlpp-stat__hint--warning {

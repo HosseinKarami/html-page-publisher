@@ -152,7 +152,7 @@ class SvgTest extends TestCase {
 	}
 
 	public function test_css_escaped_scheme_is_removed() {
-		// CSS allows \6a for "j"; the url() is dropped rather than decoded.
+		// CSS allows \6a for "j"; decoded, it is javascript: and dropped.
 		$out = $this->clean( self::OPEN . '<style>rect{background:url(\\6a avascript:alert(1))}</style></svg>' );
 		$this->assertStringNotContainsString( '6a avascript', $out );
 		$this->assertStringContainsString( 'background:none', $out );
@@ -169,6 +169,85 @@ class SvgTest extends TestCase {
 		$out = $this->clean( self::OPEN . '<style>@import url(https://evil.example/x.css); .a{fill:red}</style></svg>' );
 		$this->assertStringNotContainsString( '@import', $out );
 		$this->assertStringContainsString( '.a{fill:red}', $out );
+	}
+
+	/*
+	|--------------------------------------------------------------------------
+	| Nothing loads from another site
+	|--------------------------------------------------------------------------
+	*/
+
+	/**
+	 * Off-site references, some hidden behind CSS escapes. None can run
+	 * script, but each would let a file phone home when opened.
+	 *
+	 * @return array
+	 */
+	public function outside_references() {
+		$o = self::OPEN;
+		return array(
+			'escaped @import'           => array( $o . '<style>@\69mport url(https://evil.example/x.css); .a{fill:red}</style></svg>' ),
+			'six-digit escaped @import' => array( $o . '<style>@\000049 mport "https://evil.example/x.css"; .a{fill:red}</style></svg>' ),
+			'escaped url function'      => array( $o . '<style>.a{background:u\72l(https://evil.example/b.png)}</style></svg>' ),
+			'escaped url in attribute'  => array( $o . '<rect fill="u\72l(https://evil.example/p.svg#x)"/></svg>' ),
+			'external image'            => array( $o . '<image href="https://evil.example/b.png" width="1" height="1"/></svg>' ),
+			'protocol-relative image'   => array( $o . '<image href="//evil.example/b.png" width="1" height="1"/></svg>' ),
+			'external feImage'          => array( $o . '<filter id="f"><feImage xlink:href="https://evil.example/b.png"/></filter></svg>' ),
+			'external font'             => array( $o . '<style>@font-face{font-family:x;src:url(https://evil.example/f.woff2)}</style></svg>' ),
+			'external paint server'     => array( $o . '<rect fill="url(https://evil.example/p.svg#g)"/></svg>' ),
+			'external filter'           => array( $o . '<rect filter="url(//evil.example/f.svg#f)"/></svg>' ),
+		);
+	}
+
+	/**
+	 * @dataProvider outside_references
+	 *
+	 * @param string $svg SVG with an off-site reference.
+	 */
+	public function test_nothing_loads_from_another_site( $svg ) {
+		$out = $this->clean( $svg );
+		$this->assertStringNotContainsString( 'evil.example', $out, $out );
+	}
+
+	public function test_escaped_expression_is_neutralized() {
+		$out = $this->clean( self::OPEN . '<rect style="width:expr\65 ssion(alert(1))"/></svg>' );
+		$this->assertStringNotContainsString( 'ssion(', $out );
+	}
+
+	public function test_local_references_and_other_escapes_are_kept() {
+		$out = $this->clean(
+			self::OPEN
+			. '<style>.a{background:url(assets/bg.png)} .q::before{content:"\201C"} .u::before{content:"\169"} .p::before{content:"\140"} .e{content:"\\\\69"}</style>'
+			. '<rect fill="url(#g)" filter="url(#f)"/></svg>'
+		);
+		foreach ( array( 'url(assets/bg.png)', 'content:"\201C"', 'content:"\169"', 'content:"\140"', 'content:"\\\\69"', 'fill="url(#g)"', 'filter="url(#f)"' ) as $kept ) {
+			$this->assertStringContainsString( $kept, $out, "Lost {$kept}" );
+		}
+	}
+
+	/**
+	 * Characters a reader would never see.
+	 *
+	 * @return array
+	 */
+	public function invisible_characters() {
+		return array(
+			'no-break space'   => array( "\u{00A0}" ),
+			'soft hyphen'      => array( "\u{00AD}" ),
+			'zero-width space' => array( "\u{200B}" ),
+			'bidi override'    => array( "\u{202E}" ),
+			'byte order mark'  => array( "\u{FEFF}" ),
+		);
+	}
+
+	/**
+	 * @dataProvider invisible_characters
+	 *
+	 * @param string $char Invisible character.
+	 */
+	public function test_invisible_characters_cannot_disguise_a_scheme( $char ) {
+		$out = $this->clean( self::OPEN . '<a href="java' . $char . 'script:alert(1)"><text>x</text></a></svg>' );
+		$this->assertStringNotContainsString( 'script:', $out );
 	}
 
 	/*

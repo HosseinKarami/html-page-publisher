@@ -126,6 +126,8 @@ Yes. WordPress blocks SVG uploads because an SVG is not a picture but a small pr
 1. **Sanitized on upload.** Every SVG — uploaded directly, replaced, sent through the REST API or WP-CLI, or inside a ZIP bundle — is rebuilt from an allowlist of drawing elements. Scripts, event handlers (`onload`, `onclick`, …), `foreignObject`, `javascript:` and other unsafe links, external references, and DOCTYPE/entity declarations are removed or rejected.
 2. **Sandboxed when served.** Every SVG is sent with a `Content-Security-Policy` that blocks script outright, so even an SVG that somehow slipped through could not run anything. This also protects SVGs stored by earlier versions.
 
+An SVG can use pictures and fonts that sit next to it in the page's folder, or that are embedded in the file itself. References to other sites are removed: browsers never load them for an SVG shown as an image anyway.
+
 SVG support applies only to this plugin's pages; it does not enable SVG uploads in your Media Library. Uses PHP's built-in DOM extension — no extra library.
 
 = Is it safe to upload arbitrary HTML? =
@@ -161,9 +163,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 == Changelog ==
 
 = 1.5.1 =
-* New: SVG support. Every SVG is sanitized on upload with an allowlist of drawing elements — scripts, event handlers, foreignObject, unsafe links, external references and DOCTYPE/entity declarations are removed or rejected — and served with a sandboxing Content-Security-Policy. Works for uploads, replace, REST, WP-CLI and ZIP bundles. Scoped to this plugin's pages; the Media Library is unchanged.
+* New: SVG support. Every SVG is sanitized on upload with an allowlist of drawing elements — scripts, event handlers, foreignObject, unsafe links, off-site images, fonts and stylesheets, and DOCTYPE/entity declarations are removed or rejected (including when hidden behind CSS escapes or invisible characters) — and served with a sandboxing Content-Security-Policy. Works for uploads, replace, REST, WP-CLI and ZIP bundles. Scoped to this plugin's pages; the Media Library is unchanged.
 * Security: SVGs stored by earlier versions (for example from a ZIP bundle) are served sandboxed too.
-* Fixed: The request for a WordPress.org review only appeared after three new pages were published since installing or updating, so most sites never saw it. It now appears on the plugin's own screens once the site has a published page and has used the plugin for a few days. Still dismissible, and never shown again once dismissed.
+* Fixed: The request for a WordPress.org review only appeared after three new pages were published since installing or updating, so most sites never saw it. It now appears on the plugin's own screens once the site has a published page and has used the plugin for a few days. Still dismissible, never shown again once dismissed, and now styled to match the plugin's screens.
 * New: Filters `htmlpp_svg_allowed_elements`, `htmlpp_svg_max_bytes`, `htmlpp_svg_csp`.
 
 = 1.5.0 =

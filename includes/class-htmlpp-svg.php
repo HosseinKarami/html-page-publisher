@@ -392,6 +392,14 @@ class HTMLPP_Svg {
 			} elseif ( self::has_script_url( $value ) ) {
 				// e.g. an animation's to="javascript:…", fill="url(javascript:…)".
 				$keep = false;
+			} elseif ( false !== stripos( $value, 'url(' ) || false !== strpos( $value, '\\' ) ) {
+				// fill="url(…)", filter="url(…)", or a CSS-escaped u\72l(…):
+				// presentation attributes are CSS values, so same rules.
+				$clean = self::clean_css( $value );
+				if ( $clean !== $value ) {
+					$el->setAttribute( $attr->nodeName, $clean ); // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
+					++$removed;
+				}
 			}
 
 			if ( ! $keep ) {
@@ -410,7 +418,30 @@ class HTMLPP_Svg {
 	 * @return string
 	 */
 	private static function normalize_url( $url ) {
-		return strtolower( (string) preg_replace( '/[\x00-\x20\x7f]+/', '', (string) $url ) );
+		$url = (string) $url;
+		// Browsers only ignore ASCII whitespace and controls, but removing
+		// invisible Unicode (no-break space, soft hyphen, zero-width and
+		// bidi marks) too means a disguised "javascript" never survives.
+		$clean = preg_replace( '/[\x{0000}-\x{0020}\x{007F}-\x{00A0}\x{00AD}\x{180E}\x{200B}-\x{200F}\x{2028}-\x{202E}\x{2060}-\x{2064}\x{FEFF}]+/u', '', $url );
+		if ( null === $clean ) {
+			// Not valid UTF-8: fall back to stripping ASCII controls.
+			$clean = preg_replace( '/[\x00-\x20\x7f]+/', '', $url );
+		}
+		return strtolower( (string) $clean );
+	}
+
+	/**
+	 * Whether a normalized URL points outside the file's own site
+	 * (a scheme other than data:, or protocol-relative).
+	 *
+	 * @param string $v Normalized URL.
+	 * @return bool
+	 */
+	private static function is_external( $v ) {
+		if ( 0 === strpos( $v, '//' ) ) {
+			return true;
+		}
+		return (bool) preg_match( '#^[a-z][a-z0-9+.\-]*:#', $v ) && 0 !== strpos( $v, 'data:' );
 	}
 
 	/**
@@ -459,12 +490,52 @@ class HTMLPP_Svg {
 			return ! $has_scheme || (bool) preg_match( '#^(https?|mailto|tel):#', $v );
 		}
 		if ( in_array( $tag, self::IMAGES, true ) ) {
-			return ! $has_scheme || (bool) preg_match( '#^https?:#', $v ) || self::is_raster_data( $v );
+			// Only files next to the SVG, or inline raster data. An SVG shown
+			// through <img> can never load another URL, and a sandboxed one
+			// may not, so an external image would only ever be a tracking
+			// beacon for someone opening the file directly.
+			return self::is_raster_data( $v ) || ( ! $has_scheme && ! self::is_external( $v ) );
 		}
 
 		// <use>, gradients, patterns, filters, textPath, mpath: an external
 		// reference would pull another document into this one.
 		return false;
+	}
+
+	/**
+	 * Turn CSS escapes of plain ASCII back into the characters themselves.
+	 *
+	 * CSS lets "@\69mport" mean "@import" and "expr\65ssion" mean
+	 * "expression"; decoding first means the filters see what the browser
+	 * sees. Escapes of anything else (quotes, non-ASCII) are left alone so
+	 * valid stylesheets are not changed.
+	 *
+	 * @param string $css Stylesheet text.
+	 * @return string
+	 */
+	private static function decode_css_escapes( $css ) {
+		$decode = static function ( $m ) {
+			if ( isset( $m[1] ) && '' !== $m[1] ) {
+				$ord = (int) hexdec( $m[1] );
+				if ( $ord > 0x7F ) {
+					return $m[0];
+				}
+				$char = chr( $ord );
+			} else {
+				$char = $m[2];
+				$ord  = ord( $char );
+			}
+			// Letters, digits and the punctuation a keyword or URL scheme needs.
+			if ( ( $ord >= 0x30 && $ord <= 0x39 ) || ( $ord >= 0x41 && $ord <= 0x5A ) || ( $ord >= 0x61 && $ord <= 0x7A ) || in_array( $char, array( '@', ':', '(', ')', '-', '_', '.', '/' ), true ) ) {
+				return $char;
+			}
+			return $m[0];
+		};
+
+		// One pass, left to right: "\\\\" (an escaped backslash) is consumed
+		// whole, so the character after it is never read as an escape.
+		$out = preg_replace_callback( '/\\\\(?:([0-9a-fA-F]{1,6})\s?|(.))/s', $decode, $css );
+		return null === $out ? $css : $out;
 	}
 
 	/**
@@ -478,7 +549,7 @@ class HTMLPP_Svg {
 	 * @return string
 	 */
 	public static function clean_css( $css ) {
-		$css = (string) $css;
+		$css = self::decode_css_escapes( (string) $css );
 
 		$css = (string) preg_replace( '/@import[^;]*;?/i', '', $css );
 		$css = (string) preg_replace( '/expression\s*\(|-moz-binding\s*:|behavior\s*:/i', 'x-removed:', $css );
@@ -493,11 +564,10 @@ class HTMLPP_Svg {
 				if ( '' === $v || '#' === $v[0] || self::is_raster_data( $v ) ) {
 					return $m[0];
 				}
-				// Relative paths and http(s) are fine; any other scheme is not.
-				if ( ! preg_match( '#^[a-z][a-z0-9+.\-]*:#', $v ) || preg_match( '#^https?:#', $v ) ) {
-					return $m[0];
-				}
-				return 'none';
+				// Files next to the SVG only. Fonts, images and stylesheets
+				// from elsewhere never load for a served SVG, so they would
+				// only be a beacon.
+				return self::is_external( $v ) ? 'none' : $m[0];
 			},
 			$css
 		);

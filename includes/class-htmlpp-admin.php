@@ -315,8 +315,8 @@ class HTMLPP_Admin {
 
 	/**
 	 * A single, dismissible "leave a review" notice — shown only on the
-	 * plugin's own screens, only after the site has published at least three
-	 * pages and used the plugin for a week, and never again once dismissed.
+	 * plugin's own screens, once the site has a public page and has used
+	 * the plugin for a few days, and never again once dismissed.
 	 */
 	public function maybe_review_notice() {
 		if ( ! current_user_can( HTMLPP_Plugin::capability() ) || ! $this->is_plugin_screen() ) {
@@ -342,23 +342,28 @@ class HTMLPP_Admin {
 		$done_url  = wp_nonce_url( add_query_arg( 'htmlpp_review', 'done' ), 'htmlpp_review' );
 		$later_url = wp_nonce_url( add_query_arg( 'htmlpp_review', 'later' ), 'htmlpp_review' );
 		?>
-		<div class="notice notice-info is-dismissible htmlpp-review-notice" data-htmlpp-later="<?php echo esc_url( $later_url ); ?>">
-			<p>
-				<strong><?php esc_html_e( 'Enjoying HTML Page Publisher?', 'html-page-publisher' ); ?></strong>
-				<?php esc_html_e( 'A short review on WordPress.org helps other people find it and keeps the plugin going.', 'html-page-publisher' ); ?>
-			</p>
-			<p>
-				<a class="button button-primary" href="<?php echo esc_url( self::REVIEW_URL ); ?>" target="_blank" rel="noopener" data-htmlpp-dismiss="<?php echo esc_url( $done_url ); ?>">
+		<div class="notice is-dismissible htmlpp-review-notice" data-htmlpp-later="<?php echo esc_url( $later_url ); ?>">
+			<span class="htmlpp-review-notice__icon" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+				</svg>
+			</span>
+			<div class="htmlpp-review-notice__body">
+				<p class="htmlpp-review-notice__title"><?php esc_html_e( 'Enjoying HTML Page Publisher?', 'html-page-publisher' ); ?></p>
+				<p class="htmlpp-review-notice__text"><?php esc_html_e( 'A short review on WordPress.org helps other people find it and keeps the plugin going.', 'html-page-publisher' ); ?></p>
+			</div>
+			<div class="htmlpp-review-notice__actions">
+				<a class="htmlpp-button-primary" href="<?php echo esc_url( self::REVIEW_URL ); ?>" target="_blank" rel="noopener" data-htmlpp-dismiss="<?php echo esc_url( $done_url ); ?>">
 					<?php esc_html_e( 'Leave a review', 'html-page-publisher' ); ?>
 					<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'html-page-publisher' ); ?></span>
 				</a>
-				<a class="button" href="<?php echo esc_url( $later_url ); ?>">
+				<a class="htmlpp-button-ghost" href="<?php echo esc_url( $later_url ); ?>">
 					<?php esc_html_e( 'Maybe later', 'html-page-publisher' ); ?>
 				</a>
-				<a class="button-link" href="<?php echo esc_url( $done_url ); ?>">
+				<a class="htmlpp-review-notice__never" href="<?php echo esc_url( $done_url ); ?>">
 					<?php esc_html_e( 'I already did / don’t ask again', 'html-page-publisher' ); ?>
 				</a>
-			</p>
+			</div>
 		</div>
 		<?php
 	}
