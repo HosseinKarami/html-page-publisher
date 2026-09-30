@@ -121,6 +121,28 @@ class ZipTest extends TestCase {
 		$this->assertFileExists( $this->tmp . '/dest/css/s.css' );
 	}
 
+	public function test_svg_entries_are_sanitized_before_they_reach_disk() {
+		$zip = $this->make_zip(
+			array(
+				'index.html'      => '<html></html>',
+				'img/logo.svg'    => '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(1)</script><rect width="4" height="4" fill="#123"/></svg>',
+				'img/broken.svg'  => '<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg xmlns="http://www.w3.org/2000/svg">&x;</svg>',
+			)
+		);
+		$r = HTMLPP_Zip::import( $zip, $this->tmp . '/dest' );
+
+		$this->assertTrue( $r['ok'], $r['error'] );
+		$this->assertContains( 'img/logo.svg', $r['written'] );
+		$stored = file_get_contents( $this->tmp . '/dest/img/logo.svg' );
+		$this->assertStringNotContainsString( 'script', $stored );
+		$this->assertStringNotContainsString( 'onload', $stored );
+		$this->assertStringContainsString( 'fill="#123"', $stored );
+
+		$this->assertFileDoesNotExist( $this->tmp . '/dest/img/broken.svg' );
+		$this->assertCount( 1, $r['skipped'] );
+		$this->assertStringContainsString( 'img/broken.svg', $r['skipped'][0] );
+	}
+
 	public function test_traversal_and_absolute_entries_are_skipped() {
 		$zip = $this->make_zip(
 			array(

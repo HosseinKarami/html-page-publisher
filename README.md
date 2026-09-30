@@ -138,6 +138,8 @@ The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one s
 | `htmlpp_reserved_paths` / `htmlpp_path_collides` | filter | Custom-path validation |
 | `htmlpp_home_reserved_query_vars` | filter | Query vars that bypass a front-page mapping |
 | `htmlpp_zip_allowed_extensions` / `htmlpp_zip_max_bytes` / `htmlpp_zip_max_files` | filter | ZIP import limits |
+| `htmlpp_svg_allowed_elements` | filter | SVG elements that survive sanitizing (`script`, `foreignObject` and friends can never be re-allowed) |
+| `htmlpp_svg_max_bytes` / `htmlpp_svg_csp` | filter | SVG size limit / Content-Security-Policy sent with every SVG |
 
 ## Development
 

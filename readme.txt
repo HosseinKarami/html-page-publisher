@@ -5,7 +5,7 @@ Tags: html, landing page, claude design, ai, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -29,6 +29,7 @@ It is built for the "I made this page with an AI tool, now how do I get it onto 
 * **Built-in HTML editor**: edit a published page in the dashboard with the native WordPress code editor (syntax highlighting)
 * **Version history**: every save keeps the previous version; restore any earlier version with one click (restoring is itself undoable)
 * **File management**: add, replace, or delete a page's images, CSS, JS, fonts and other files in place — Replace keeps the original filename so existing references keep working
+* **Safe SVG support**: SVG images are sanitized on upload and served in a sandbox, so logos and icons work without the security risk that makes WordPress block SVG by default
 * **Clean Claude Design exports**: strips the export-time runtime wrappers Claude Design adds so the published page is pure static HTML; add rules for other tools with the `htmlpp_sanitizer_rules` filter
 * **Configurable URL prefix**: default `/pages/your-slug/`, change to anything you like (e.g. `/resources/`, `/guides/`)
 * **Optional subdomain routing**: point `sales.example.com` at your site and pages appear at `sales.example.com/your-slug/`
@@ -118,6 +119,15 @@ Two steps:
 
 Then enter the hostname in **HTML Pages → Settings → Subdomain**. Pages will be served at `https://sales.yourdomain.com/your-slug/` in addition to the regular prefix URL.
 
+= Can I use SVG files? Are they safe? =
+
+Yes. WordPress blocks SVG uploads because an SVG is not a picture but a small program: it can contain JavaScript that runs if someone opens the file. HTML Page Publisher accepts SVGs for your pages and makes them safe in two independent ways:
+
+1. **Sanitized on upload.** Every SVG — uploaded directly, replaced, sent through the REST API or WP-CLI, or inside a ZIP bundle — is rebuilt from an allowlist of drawing elements. Scripts, event handlers (`onload`, `onclick`, …), `foreignObject`, `javascript:` and other unsafe links, external references, and DOCTYPE/entity declarations are removed or rejected.
+2. **Sandboxed when served.** Every SVG is sent with a `Content-Security-Policy` that blocks script outright, so even an SVG that somehow slipped through could not run anything. This also protects SVGs stored by earlier versions.
+
+SVG support applies only to this plugin's pages; it does not enable SVG uploads in your Media Library. Uses PHP's built-in DOM extension — no extra library.
+
 = Is it safe to upload arbitrary HTML? =
 
 Only users with the `manage_options` capability (administrators by default) can upload pages. Uploaded HTML is served as-is, including any `<script>` tags it contains, so only upload HTML you trust.
@@ -149,6 +159,12 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 5. Page settings: draft/published, custom path or front page, noindex, rename and duplicate.
 
 == Changelog ==
+
+= 1.5.1 =
+* New: SVG support. Every SVG is sanitized on upload with an allowlist of drawing elements — scripts, event handlers, foreignObject, unsafe links, external references and DOCTYPE/entity declarations are removed or rejected — and served with a sandboxing Content-Security-Policy. Works for uploads, replace, REST, WP-CLI and ZIP bundles. Scoped to this plugin's pages; the Media Library is unchanged.
+* Security: SVGs stored by earlier versions (for example from a ZIP bundle) are served sandboxed too.
+* Fixed: The request for a WordPress.org review only appeared after three new pages were published since installing or updating, so most sites never saw it. It now appears on the plugin's own screens once the site has a published page and has used the plugin for a few days. Still dismissible, and never shown again once dismissed.
+* New: Filters `htmlpp_svg_allowed_elements`, `htmlpp_svg_max_bytes`, `htmlpp_svg_csp`.
 
 = 1.5.0 =
 * New: REST API at `/wp-json/htmlpp/v1` — list, create/replace (JSON HTML or multipart HTML/ZIP + files), update HTML and settings, rename, duplicate, delete, files, version history and restore, preview links. Application-password or cookie+nonce auth; `manage_options` required.
@@ -225,6 +241,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.5.1 =
+SVG images now work: every SVG is sanitized on upload and served in a sandbox so it can never run script. Also fixes the review request most sites never saw.
 
 = 1.5.0 =
 Your pages keep their URLs. Coming from 1.2.x: replacing an existing page now needs an explicit checkbox, links into the uploads folder redirect to the page URL, and pages gain a canonical link (Settings). Adds ZIP bundles, drafts, custom paths, analytics snippets, sitemap and a REST API.

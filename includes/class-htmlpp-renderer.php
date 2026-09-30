@@ -1059,6 +1059,15 @@ class HTMLPP_Renderer {
 		$mtime = (int) filemtime( $file );
 		$etag  = '"' . md5( $file . '|' . $mtime . '|' . $size . '|' . HTMLPP_VERSION ) . '"';
 
+		if ( 'svg' === $ext ) {
+			// Opened directly, an SVG is a document that runs with this
+			// site's origin. The sandbox blocks script and gives it an opaque
+			// origin, whatever the file contains — which also covers SVGs
+			// stored before 1.5.1 sanitized them. It has no effect on an SVG
+			// shown through <img>, where browsers never run script anyway.
+			header( 'Content-Security-Policy: ' . self::svg_csp() );
+		}
+
 		self::send_headers( $mime, $etag, $mtime, self::cache_control( $file, $ext, false, $slug, $no_store ), $slug, $file, false, $no_store || $noindex, $no_store );
 
 		// Content-Length is wrong if PHP compresses the output itself.
@@ -1072,6 +1081,22 @@ class HTMLPP_Renderer {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
 		readfile( $file );
 		exit;
+	}
+
+	/**
+	 * Content-Security-Policy sent with every SVG.
+	 *
+	 * @return string
+	 */
+	public static function svg_csp() {
+		$csp = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src data:; sandbox";
+
+		/**
+		 * Filter the Content-Security-Policy sent with SVG files.
+		 *
+		 * @param string $csp Header value.
+		 */
+		return (string) apply_filters( 'htmlpp_svg_csp', $csp );
 	}
 
 	/**

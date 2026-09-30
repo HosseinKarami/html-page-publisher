@@ -149,6 +149,40 @@ class PageServiceTest extends TestCase {
 		$this->assertSame( 'htmlpp_not_found', $this->service->delete_file( 'z', 'css/s.css' )->get_error_code() );
 	}
 
+	public function test_svg_asset_is_sanitized_on_the_way_in() {
+		$this->service->create( 'art', array( 'html' => '<p>art</p>' ) );
+
+		$svg = sys_get_temp_dir() . '/htmlpp-tests/in.svg';
+		file_put_contents( $svg, '<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><circle r="2" onclick="x()"/></a></svg>' );
+
+		$stored = $this->service->store_file(
+			'art',
+			array( 'name' => 'icon.svg', 'tmp_name' => $svg, 'type' => 'image/svg+xml', 'error' => 0, 'size' => filesize( $svg ) ),
+			'sideload'
+		);
+
+		$this->assertSame( 'icon.svg', $stored );
+		$out = file_get_contents( wp_upload_dir()['basedir'] . '/html-page-publisher/art/assets/icon.svg' );
+		$this->assertStringNotContainsString( 'javascript', $out );
+		$this->assertStringNotContainsString( 'onclick', $out );
+		$this->assertStringContainsString( '<circle r="2"/>', $out );
+	}
+
+	public function test_invalid_svg_is_refused_with_a_reason() {
+		$this->service->create( 'art2', array( 'html' => '<p>art</p>' ) );
+		$svg = sys_get_temp_dir() . '/htmlpp-tests/bad.svg';
+		file_put_contents( $svg, '<html><body onload="x()"></body></html>' );
+
+		$stored = $this->service->store_file(
+			'art2',
+			array( 'name' => 'bad.svg', 'tmp_name' => $svg, 'type' => 'image/svg+xml', 'error' => 0, 'size' => filesize( $svg ) ),
+			'sideload'
+		);
+
+		$this->assertInstanceOf( 'WP_Error', $stored );
+		$this->assertStringContainsString( 'not an SVG', $stored->get_error_message() );
+	}
+
 	public function test_locked_editing_blocks_mutations_but_not_new_pages() {
 		add_filter( 'htmlpp_editing_disabled', '__return_true_test' );
 		$this->assertIsArray( $this->service->create( 'n', array( 'html' => '<p>n</p>' ) ) );

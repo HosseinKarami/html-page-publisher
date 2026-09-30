@@ -232,7 +232,10 @@ class HTMLPP_Zip {
 				}
 			}
 
-			$outcome = self::extract_entry( $zip, $entry['original'], $target, $budget );
+			// SVGs are read into memory so they can be sanitized before they
+			// ever touch disk; everything else streams straight through.
+			$is_svg  = '' !== $target && 'svg' === strtolower( (string) pathinfo( $rel, PATHINFO_EXTENSION ) );
+			$outcome = self::extract_entry( $zip, $entry['original'], $is_svg ? '' : $target, $budget );
 
 			if ( 'too-big' === $outcome['status'] ) {
 				$zip->close();
@@ -253,6 +256,20 @@ class HTMLPP_Zip {
 			}
 
 			$budget -= $outcome['bytes'];
+
+			if ( $is_svg ) {
+				$clean = HTMLPP_Svg::sanitize( $outcome['content'] );
+				if ( ! $clean['ok'] ) {
+					$result['skipped'][] = $rel . ' (' . $clean['error'] . ')';
+					continue;
+				}
+				if ( ! HTMLPP_Storage::put_contents( $target, $clean['svg'] ) ) {
+					$result['skipped'][] = $rel . ' (' . __( 'could not be written', 'html-page-publisher' ) . ')';
+					continue;
+				}
+				$result['written'][] = $rel;
+				continue;
+			}
 
 			if ( $i === $index_key ) {
 				$result['index_html'] = $outcome['content'];

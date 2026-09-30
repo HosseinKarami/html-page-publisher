@@ -40,6 +40,11 @@ class HTMLPP_Admin {
 	const REVIEW_META = 'htmlpp_review_notice';
 
 	/**
+	 * How long someone uses the plugin before being asked for a review.
+	 */
+	const REVIEW_DELAY = 3 * DAY_IN_SECONDS;
+
+	/**
 	 * Wire admin hooks.
 	 */
 	public function __construct() {
@@ -314,24 +319,23 @@ class HTMLPP_Admin {
 	 * pages and used the plugin for a week, and never again once dismissed.
 	 */
 	public function maybe_review_notice() {
-		if ( ! current_user_can( 'manage_options' ) || ! $this->is_plugin_screen() ) {
+		if ( ! current_user_can( HTMLPP_Plugin::capability() ) || ! $this->is_plugin_screen() ) {
 			return;
 		}
 
-		if ( (int) get_option( 'htmlpp_publish_count', 0 ) < 3 ) {
-			return;
-		}
+		$stats = HTMLPP_Storage::page_stats();
 
-		$installed = (int) get_option( 'htmlpp_installed_at', 0 );
-		if ( $installed > 0 && ( time() - $installed ) < 7 * DAY_IN_SECONDS ) {
-			return;
+		// "Using the plugin since": the earlier of the install date and the
+		// oldest page, so someone upgrading with pages from 1.2.x is not made
+		// to wait as if they had just installed.
+		$first_use = (int) get_option( 'htmlpp_installed_at', 0 );
+		if ( $stats['oldest'] > 0 && ( 0 === $first_use || $stats['oldest'] < $first_use ) ) {
+			$first_use = $stats['oldest'];
 		}
 
 		$state = get_user_meta( get_current_user_id(), self::REVIEW_META, true );
-		if ( 'dismissed' === $state ) {
-			return;
-		}
-		if ( is_numeric( $state ) && time() < (int) $state ) {
+
+		if ( ! self::review_due( $stats['public'], $first_use, time(), $state ) ) {
 			return;
 		}
 
@@ -357,6 +361,35 @@ class HTMLPP_Admin {
 			</p>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Whether the review request should show.
+	 *
+	 * Asks only once the site has a live page — the moment the plugin has
+	 * done its job — and has been in use for a few days. Never again once
+	 * dismissed; "Maybe later" snoozes it.
+	 *
+	 * @param int   $public_pages Published (non-draft) pages.
+	 * @param int   $first_use    Timestamp the plugin was first used (0 if unknown).
+	 * @param int   $now          Current timestamp.
+	 * @param mixed $state        The user's stored choice: '', 'dismissed', or a snooze-until timestamp.
+	 * @return bool
+	 */
+	public static function review_due( $public_pages, $first_use, $now, $state ) {
+		if ( (int) $public_pages < 1 ) {
+			return false;
+		}
+		if ( (int) $first_use > 0 && ( (int) $now - (int) $first_use ) < self::REVIEW_DELAY ) {
+			return false;
+		}
+		if ( 'dismissed' === $state ) {
+			return false;
+		}
+		if ( is_numeric( $state ) && (int) $now < (int) $state ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -433,7 +466,7 @@ class HTMLPP_Admin {
 					'<p><strong>' . esc_html__( 'How does the subdomain feature work?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'Point a subdomain at the same server (DNS + host config), then enter the hostname in Settings → Subdomain. Pages will also be served at https://your-subdomain/your-slug/.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Is it safe to upload arbitrary HTML?', 'html-page-publisher' ) . '</strong><br>' .
-					esc_html__( 'Only administrators (manage_options) can upload. HTML and SVG files are served as-is, including any <script> tags, so only upload files you trust.', 'html-page-publisher' ) . '</p>' .
+					esc_html__( 'Only administrators can upload. Page HTML is served as-is, including any <script> tags, so only upload HTML you trust. SVG files are different: every SVG is sanitized on upload (scripts, event handlers and unsafe links are removed) and served in a sandbox, so an SVG can never run script on your site.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Will uninstalling delete my pages?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'No. Uninstall removes the plugin’s settings but keeps your pages, their version history, and each page’s metadata (so a reinstall never republishes a former draft). Delete the two uploads folders manually if you want everything gone.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Can I publish from a script or an AI agent?', 'html-page-publisher' ) . '</strong><br>' .

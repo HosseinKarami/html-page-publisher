@@ -826,9 +826,19 @@ class HTMLPP_Uploader {
 			return array( 'error' => __( 'Sorry, this file type is not allowed.', 'html-page-publisher' ) );
 		}
 
-		// SVG is markup: it is served from the site origin and can carry script.
-		if ( 'svg' === $ext && did_action( 'admin_init' ) && ! HTMLPP_Plugin::can_write_markup() ) {
-			return array( 'error' => HTMLPP_Plugin::markup_denied_message() );
+		// SVG is markup, not a picture: it is sanitized, then stored. Every
+		// entry point (admin, REST, WP-CLI, replace-in-place) arrives here.
+		if ( 'svg' === $ext ) {
+			if ( did_action( 'admin_init' ) && ! HTMLPP_Plugin::can_write_markup() ) {
+				return array( 'error' => HTMLPP_Plugin::markup_denied_message() );
+			}
+			// The file array already has an 'error' key (PHP's upload error
+			// code), so a failure is signalled by a string, not by that key.
+			$sanitized = self::sanitize_svg_file( $single );
+			if ( is_string( $sanitized ) ) {
+				return array( 'error' => $sanitized );
+			}
+			return self::store_via_core( $sanitized, $dir, $mode, array( 'svg' => 'image/svg+xml' ), 'svg' );
 		}
 
 		$image_exts = array();
@@ -850,6 +860,33 @@ class HTMLPP_Uploader {
 		}
 
 		return self::store_via_core( $single, $dir, $mode, $mimes, $is_image ? '' : $ext );
+	}
+
+	/**
+	 * Replace an uploaded SVG's temporary file with its sanitized version.
+	 *
+	 * @param array $single Normalized file array.
+	 * @return array|string The file array (size updated), or an error message.
+	 */
+	private static function sanitize_svg_file( array $single ) {
+		$raw = HTMLPP_Storage::get_contents( $single['tmp_name'] );
+		if ( false === $raw ) {
+			return __( 'The file could not be read.', 'html-page-publisher' );
+		}
+
+		$clean = HTMLPP_Svg::sanitize( $raw );
+		if ( ! $clean['ok'] ) {
+			return $clean['error'];
+		}
+
+		// Rewriting the temp file keeps it registered as an upload, so
+		// core's handler still moves it with its own checks.
+		if ( ! HTMLPP_Storage::put_contents( $single['tmp_name'], $clean['svg'] ) ) {
+			return __( 'The SVG image could not be processed.', 'html-page-publisher' );
+		}
+		$single['size'] = strlen( $clean['svg'] );
+
+		return $single;
 	}
 
 	/**

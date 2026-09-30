@@ -14,6 +14,7 @@ define( 'HTMLPP_VERSION', 'test' );
 define( 'HTMLPP_STORAGE_DIRNAME', 'html-page-publisher' );
 define( 'HTMLPP_BACKUPS_DIRNAME', 'html-page-publisher-backups' );
 define( 'HOUR_IN_SECONDS', 3600 );
+define( 'DAY_IN_SECONDS', 86400 );
 
 /**
  * Registered test filters: hook => callable[].
@@ -319,6 +320,7 @@ require_once dirname( __DIR__ ) . '/includes/class-htmlpp-meta.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-storage.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-sanitizer.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-renderer.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-svg.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-zip.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-uploader.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-admin.php';

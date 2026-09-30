@@ -583,6 +583,58 @@ class HTMLPP_Storage {
 	}
 
 	/**
+	 * How many pages are public, and when the oldest one was created.
+	 *
+	 * Cheap enough for an admin notice: one directory scan and one option
+	 * read, no walking of asset folders.
+	 *
+	 * @return array{public:int, oldest:int} Oldest is a timestamp, 0 if none.
+	 */
+	public static function page_stats() {
+		$stats = array(
+			'public' => 0,
+			'oldest' => 0,
+		);
+
+		$dir     = self::base_dir();
+		$entries = is_dir( $dir ) ? @scandir( $dir ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! is_array( $entries ) ) {
+			return $stats;
+		}
+
+		$records = class_exists( 'HTMLPP_Meta' ) ? HTMLPP_Meta::all() : array();
+
+		foreach ( $entries as $entry ) {
+			if ( '' === $entry || '.' === $entry[0] ) {
+				continue;
+			}
+			$index = trailingslashit( $dir ) . $entry . '/index.html';
+			if ( ! is_file( $index ) ) {
+				continue;
+			}
+
+			$record = isset( $records[ $entry ] ) && is_array( $records[ $entry ] ) ? $records[ $entry ] : array();
+
+			// The earlier of the record's creation date and the file date:
+			// pages from before 1.4.0 may have no record, or one written
+			// long after the page itself was published.
+			$created = (int) filemtime( $index );
+			if ( ! empty( $record['created'] ) && ( 0 === $created || (int) $record['created'] < $created ) ) {
+				$created = (int) $record['created'];
+			}
+			if ( $created > 0 && ( 0 === $stats['oldest'] || $created < $stats['oldest'] ) ) {
+				$stats['oldest'] = $created;
+			}
+
+			if ( ! isset( $record['status'] ) || 'draft' !== $record['status'] ) {
+				++$stats['public'];
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
 	 * Delete a page directory. Guards against path traversal.
 	 *
 	 * @param string $slug Slug (will be sanitized).

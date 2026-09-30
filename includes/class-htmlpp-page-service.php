@@ -232,7 +232,6 @@ class HTMLPP_Page_Service {
 				)
 			);
 			HTMLPP_Meta::remove_redirect( $slug );
-			update_option( 'htmlpp_publish_count', (int) get_option( 'htmlpp_publish_count', 0 ) + 1, false );
 
 			/** This action is documented in includes/class-htmlpp-uploader.php */
 			do_action( 'htmlpp_page_created', $slug, $html, $draft ? 'draft' : 'published' );
