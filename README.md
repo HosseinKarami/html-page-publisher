@@ -112,6 +112,7 @@ The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one s
 | `htmlpp_page_deleted` | action | Page removed; `( $slug )` |
 | `htmlpp_before_serve` | action | About to stream a file; `( $slug, $file, $rel )` — exit here to gate access |
 | `htmlpp_serve_headers` | action | Standard headers sent, body not yet; add `X-Robots-Tag`, CSP, … |
+| `htmlpp_serve_priority` | filter | `init` priority pages are served at (default `0`). Raise it when an add-on needs another plugin's `init` code first, e.g. above `10` for form plugins. Add it on `htmlpp_loaded` or earlier |
 | `htmlpp_sanitizer_rules` | filter | Named PCRE cleanup rules applied on upload/save; `( $rules, $slug, $context )` |
 | `htmlpp_sanitize_html` | filter | Final HTML before it is written; `( $html, $slug, $context )` |
 | `htmlpp_allow_overwrite` | filter | Let an upload replace an existing slug without the checkbox; `( $allowed, $slug )` |
@@ -124,7 +125,7 @@ The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one s
 | `htmlpp_htaccess_rules` | filter | Contents of the protective `.htaccess` |
 | `htmlpp_max_backups` | filter | Version-history retention per page |
 | `htmlpp_page_meta` | filter | A page's metadata record; `( $record, $slug )` |
-| `htmlpp_page_meta_defaults` | filter | Register extra per-page fields an add-on wants persisted |
+| `htmlpp_page_meta_defaults` | filter | Register extra per-page fields an add-on wants persisted. Write them with `htmlpp()->pages->set_meta()`; `get()`, `list_pages()` and REST return them. Prefix your keys and don't store secrets |
 | `htmlpp_page_meta_updated` | action | Metadata saved; `( $slug, $record, $before )` |
 | `htmlpp_page_status_changed` | action | Draft ↔ published; `( $slug, $from, $to )` |
 | `htmlpp_page_created` | action | New page (draft or published); `( $slug, $html, $status )` |

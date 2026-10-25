@@ -190,6 +190,45 @@ class PageServiceTest extends TestCase {
 		$this->assertSame( 'htmlpp_locked', $this->service->rename( 'n', 'm' )->get_error_code() );
 		$this->assertSame( 'htmlpp_locked', $this->service->create( 'n', array( 'html' => '<p>y</p>', 'overwrite' => true ) )->get_error_code() );
 	}
+
+	public function test_addon_fields_are_written_with_set_meta_and_returned_in_page_details() {
+		add_filter(
+			'htmlpp_page_meta_defaults',
+			static function ( $defaults ) {
+				$defaults['html_forms'] = 0;
+				$defaults['url']        = 'add-on'; // Clashes with a page-detail key.
+				return $defaults;
+			}
+		);
+		$this->service->create( 'f', array( 'html' => '<p>f</p>' ) );
+
+		$this->assertSame( 0, $this->service->get( 'f' )['html_forms'], 'Defaults show before the add-on writes.' );
+
+		$page = $this->service->set_meta(
+			'f',
+			array(
+				'html_forms' => 2,
+				'url'        => 'https://evil.example/',
+				'unknown'    => 'x',
+			)
+		);
+		$this->assertSame( 2, $page['html_forms'] );
+		$this->assertSame( 2, $this->service->get( 'f' )['html_forms'] );
+		$this->assertSame( 2, $this->service->list_pages()[0]['html_forms'] );
+
+		$this->assertSame( 'https://example.com/pages/f/', $page['url'], 'A page-detail key wins a clash.' );
+		$this->assertArrayNotHasKey( 'unknown', $page, 'Unregistered fields are not stored.' );
+		$this->assertArrayNotHasKey( 'preview_salt', $page, 'Core fields stay out of the add-on fields.' );
+	}
+
+	public function test_page_details_have_no_addon_fields_when_none_are_registered() {
+		$page = $this->service->create( 'plain', array( 'html' => '<p>p</p>' ) );
+		$this->assertSame(
+			array( 'slug', 'title', 'status', 'url', 'preview_url', 'edit_url', 'path', 'noindex', 'no_snippets', 'files', 'modified', 'created', 'author' ),
+			array_keys( $this->service->get( 'plain' ) )
+		);
+		$this->assertTrue( $page['created'] );
+	}
 }
 
 function wp_list_pluck_test( array $rows, $key ) {

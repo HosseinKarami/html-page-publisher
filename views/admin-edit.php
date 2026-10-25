@@ -77,7 +77,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<div class="htmlpp-content">
 
-		<?php // WordPress relocates admin_notices to just after .wp-header-end; keep them below the hero. ?>
+		<?php
+		// Notices WordPress would print above the hero (update nag, other plugins'
+		// banners) print here; WordPress then moves standard ones after .wp-header-end.
+		HTMLPP_Admin::print_notices();
+		?>
 		<div class="wp-header-end"></div>
 
 		<?php if ( $notice ) : ?>

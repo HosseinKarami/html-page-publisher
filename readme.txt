@@ -5,7 +5,7 @@ Tags: html, landing page, claude design, ai, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.1
+Stable tag: 1.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -162,6 +162,11 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 
 == Changelog ==
 
+= 1.5.2 =
+* Fixed: WordPress's update-available notice, inline notices and other plugins' banners appeared above the plugin's header, squashed against it. On the plugin's screens every notice now appears below the header.
+* New: `htmlpp_serve_priority` filter for the `init` priority pages are served at (default 0), for add-ons that need another plugin, such as a form plugin, loaded first. Set it on `htmlpp_loaded` or earlier.
+* New: Page details from `htmlpp()->pages->get()`, `list_pages()` and the REST API include the per-page fields add-ons register with `htmlpp_page_meta_defaults`.
+
 = 1.5.1 =
 * New: SVG support. Every SVG is sanitized on upload with an allowlist of drawing elements — scripts, event handlers, foreignObject, unsafe links, off-site images, fonts and stylesheets, and DOCTYPE/entity declarations are removed or rejected (including when hidden behind CSS escapes or invisible characters) — and served with a sandboxing Content-Security-Policy. Works for uploads, replace, REST, WP-CLI and ZIP bundles. Scoped to this plugin's pages; the Media Library is unchanged.
 * Security: SVGs stored by earlier versions (for example from a ZIP bundle) are served sandboxed too.
@@ -243,6 +248,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.5.2 =
+Notices from WordPress and other plugins now appear below the plugin header instead of squashed above it. Adds two hooks for add-on developers.
 
 = 1.5.1 =
 SVG images now work: every SVG is sanitized on upload and served in a sandbox so it can never run script. Also fixes the review request most sites never saw.

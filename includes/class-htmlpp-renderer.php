@@ -53,12 +53,35 @@ class HTMLPP_Renderer {
 	}
 
 	/**
-	 * Hook into init at priority 0 — early enough to short-circuit WP's
-	 * main query when we're going to serve a static file.
+	 * Register filters. Page serving is hooked separately by hook_serving(),
+	 * once add-ons have had a chance to change its priority.
 	 */
 	public function __construct() {
-		add_action( 'init', array( $this, 'maybe_serve' ), 0 );
 		add_filter( 'allowed_redirect_hosts', array( $this, 'allow_subdomain_redirects' ) );
+	}
+
+	/**
+	 * Hook page serving into init. Called right after `htmlpp_loaded`.
+	 *
+	 * Priority 0 is early enough to short-circuit WP's main query and other
+	 * plugins' init work when we're going to serve a static file.
+	 */
+	public function hook_serving() {
+		/**
+		 * Filter the init priority that pages are served at.
+		 *
+		 * The default, 0, serves pages before other plugins initialise. Raise
+		 * it only when an add-on needs another plugin loaded first; a form
+		 * plugin that initialises on init 10, for example, needs a priority
+		 * above 10. Every callback before it runs on each page request.
+		 *
+		 * Read once at boot: add the filter on `htmlpp_loaded` or earlier.
+		 *
+		 * @param int $priority Init priority. Default 0.
+		 */
+		$priority = (int) apply_filters( 'htmlpp_serve_priority', 0 );
+
+		add_action( 'init', array( $this, 'maybe_serve' ), $priority );
 	}
 
 	/**

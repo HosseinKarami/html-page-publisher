@@ -45,12 +45,35 @@ class HTMLPP_Admin {
 	const REVIEW_DELAY = 3 * DAY_IN_SECONDS;
 
 	/**
+	 * Hook suffixes (screen IDs) of the screens this class renders.
+	 *
+	 * @var string[]
+	 */
+	private $screens = array();
+
+	/**
+	 * Output-buffer level the notice capture started at.
+	 *
+	 * @var int
+	 */
+	private $notice_buffer_level = 0;
+
+	/**
+	 * Admin notices captured on this plugin's screens, waiting for the view
+	 * to print them below the hero. Null when there is nothing to print.
+	 *
+	 * @var string|null
+	 */
+	private static $notices = null;
+
+	/**
 	 * Wire admin hooks.
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'admin_init', array( $this, 'handle_actions' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'current_screen', array( $this, 'maybe_capture_notices' ) );
 		add_action( 'current_screen', array( $this, 'maybe_filter_footer' ) );
 		add_action( 'admin_notices', array( $this, 'maybe_review_notice' ) );
 		add_filter( 'plugin_row_meta', array( $this, 'plugin_row_meta' ), 10, 2 );
@@ -409,6 +432,69 @@ class HTMLPP_Admin {
 
 	/*
 	|--------------------------------------------------------------------------
+	| Admin notices
+	|--------------------------------------------------------------------------
+	*/
+
+	/**
+	 * On this plugin's screens, capture every admin notice so the view can
+	 * print it below the hero.
+	 *
+	 * WordPress prints notices above the page, and its script then moves
+	 * only standard, non-inline ones below `.wp-header-end`. The rest (the
+	 * "WordPress X is available" nag, inline notices, other plugins' custom
+	 * banners) would stay above the full-bleed hero and get squashed.
+	 *
+	 * @param WP_Screen|null $screen Current screen.
+	 */
+	public function maybe_capture_notices( $screen ) {
+		if ( ! $screen || ! in_array( $screen->id, array_filter( $this->screens ), true ) ) {
+			return;
+		}
+		add_action( 'admin_notices', array( $this, 'start_notice_capture' ), PHP_INT_MIN );
+		add_action( 'all_admin_notices', array( $this, 'end_notice_capture' ), PHP_INT_MAX );
+		// Fallback for a screen that never prints them: a notice is never lost.
+		add_action( 'in_admin_footer', array( __CLASS__, 'print_notices' ) );
+	}
+
+	/**
+	 * Start buffering notice output (first admin_notices callback).
+	 */
+	public function start_notice_capture() {
+		ob_start();
+		$this->notice_buffer_level = ob_get_level();
+	}
+
+	/**
+	 * Stop buffering notice output (last all_admin_notices callback).
+	 */
+	public function end_notice_capture() {
+		if ( ! $this->notice_buffer_level || ob_get_level() < $this->notice_buffer_level ) {
+			return; // Capture never started, or a notice closed our buffer and its output already went out.
+		}
+		while ( ob_get_level() > $this->notice_buffer_level ) {
+			ob_end_flush(); // Fold buffers a notice left open into ours.
+		}
+		$captured                  = ob_get_clean();
+		$this->notice_buffer_level = 0;
+		self::$notices             = '' !== trim( (string) $captured ) ? (string) $captured : null;
+	}
+
+	/**
+	 * Print the notices captured on this screen, once. Views call it just
+	 * before `.wp-header-end`.
+	 */
+	public static function print_notices() {
+		if ( null === self::$notices ) {
+			return;
+		}
+		$notices       = self::$notices;
+		self::$notices = null;
+		echo $notices; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Notices already rendered by WordPress and other plugins on admin_notices.
+	}
+
+	/*
+	|--------------------------------------------------------------------------
 	| Footer, help tabs, plugin-list links
 	|--------------------------------------------------------------------------
 	*/
@@ -701,7 +787,7 @@ class HTMLPP_Admin {
 	 * Register the admin menu + submenus.
 	 */
 	public function menu() {
-		add_menu_page(
+		$this->screens[] = add_menu_page(
 			__( 'HTML Page Publisher', 'html-page-publisher' ),
 			__( 'HTML Pages', 'html-page-publisher' ),
 			'manage_options',
@@ -720,7 +806,7 @@ class HTMLPP_Admin {
 			array( $this, 'render_upload_page' )
 		);
 
-		add_submenu_page(
+		$this->screens[] = add_submenu_page(
 			self::PAGE_SLUG,
 			__( 'HTML Page Publisher Settings', 'html-page-publisher' ),
 			__( 'Settings', 'html-page-publisher' ),
