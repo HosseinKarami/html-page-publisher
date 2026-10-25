@@ -219,8 +219,21 @@ function plugin_basename( $file ) {
 	return basename( dirname( $file ) ) . '/' . basename( $file );
 }
 
+/**
+ * Records actions as hook => list of [ callback, priority ], so tests can
+ * check what was hooked where. Actions never run.
+ */
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
+	$GLOBALS['htmlpp_test_actions'][ $hook ][] = array( $callback, $priority );
 	return true;
+}
+
+function add_menu_page( $page_title, $menu_title, $capability, $menu_slug ) {
+	return 'toplevel_page_' . $menu_slug;
+}
+
+function add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, $menu_slug ) {
+	return 'html-pages_page_' . $menu_slug;
 }
 
 /**

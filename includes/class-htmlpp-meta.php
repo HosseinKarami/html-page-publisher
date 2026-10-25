@@ -40,6 +40,12 @@ class HTMLPP_Meta {
 	const HOME = 'home';
 
 	/**
+	 * Fields HTML Page Publisher manages itself. Any other field in a record
+	 * was registered by an add-on through `htmlpp_page_meta_defaults`.
+	 */
+	const CORE_FIELDS = array( 'status', 'path', 'noindex', 'no_snippets', 'preview_salt', 'created', 'updated', 'author' );
+
+	/**
 	 * Request-scoped cache of the path map.
 	 *
 	 * @var array<string,string>|null
@@ -65,13 +71,30 @@ class HTMLPP_Meta {
 
 		/**
 		 * Filter the default page record. Add keys here to let an add-on
-		 * persist its own per-page settings through HTMLPP_Meta::update().
+		 * persist its own per-page settings: write them with
+		 * htmlpp()->pages->set_meta(), read them from get() or list_pages().
+		 *
+		 * Page details include these fields, and so do REST responses, so
+		 * don't store secrets in them. Prefix your keys: a field whose name
+		 * matches a page-detail key (url, title…) is left out of the details.
 		 *
 		 * @param array $defaults Field => default value.
 		 */
 		$filtered = apply_filters( 'htmlpp_page_meta_defaults', $defaults );
 
 		return is_array( $filtered ) ? array_merge( $defaults, $filtered ) : $defaults;
+	}
+
+	/**
+	 * Add-on fields in a record: those registered through
+	 * `htmlpp_page_meta_defaults`, without the core fields.
+	 *
+	 * @param array $record Record from get().
+	 * @return array Field => value.
+	 */
+	public static function addon_fields( array $record ) {
+		$keys = array_diff( array_keys( self::defaults() ), self::CORE_FIELDS );
+		return array_intersect_key( $record, array_flip( $keys ) );
 	}
 
 	/**

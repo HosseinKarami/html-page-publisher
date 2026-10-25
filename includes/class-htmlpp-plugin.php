@@ -88,6 +88,9 @@ final class HTMLPP_Plugin {
 			 */
 			do_action( 'htmlpp_loaded', self::$instance );
 
+			// After htmlpp_loaded, so add-ons can filter htmlpp_serve_priority.
+			self::$instance->renderer->hook_serving();
+
 			self::$instance->maybe_upgrade();
 		}
 		return self::$instance;

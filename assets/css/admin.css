@@ -299,6 +299,17 @@ body.htmlpp-active.htmlpp-meta-ready #screen-meta-links {
 
 /* --- Notices ------------------------------------------------------- */
 
+/* WordPress and other plugins' notices, printed below the hero by
+ * HTMLPP_Admin::print_notices(). Core's update nag is an inline-block with
+ * a large top margin, made for the top of a stock admin screen. */
+body.htmlpp-active .htmlpp-content > .update-nag {
+	display: block;
+	margin: 0 0 20px;
+}
+body.htmlpp-active .htmlpp-content > .notice {
+	margin: 0 0 20px;
+}
+
 .htmlpp-notice {
 	display: flex;
 	align-items: flex-start;

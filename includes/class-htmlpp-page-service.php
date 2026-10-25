@@ -68,7 +68,8 @@ class HTMLPP_Page_Service {
 	}
 
 	/**
-	 * Public description of a page.
+	 * Public description of a page, followed by any add-on fields registered
+	 * through `htmlpp_page_meta_defaults` (a page-detail key wins a clash).
 	 *
 	 * @param string     $slug Slug.
 	 * @param array|null $row  Row from HTMLPP_Storage::list_pages(), if already at hand.
@@ -99,7 +100,7 @@ class HTMLPP_Page_Service {
 			'modified'    => isset( $row['modified'] ) ? (int) $row['modified'] : 0,
 			'created'     => (int) $meta['created'],
 			'author'      => (int) $meta['author'],
-		);
+		) + HTMLPP_Meta::addon_fields( $meta );
 	}
 
 	/*
@@ -313,7 +314,7 @@ class HTMLPP_Page_Service {
 			$update['path'] = $path;
 		}
 		foreach ( $fields as $key => $value ) {
-			if ( ! isset( $update[ $key ] ) && ! in_array( $key, array( 'status', 'noindex', 'no_snippets', 'path', 'created', 'updated', 'author', 'preview_salt' ), true ) ) {
+			if ( ! isset( $update[ $key ] ) && ! in_array( $key, HTMLPP_Meta::CORE_FIELDS, true ) ) {
 				$update[ $key ] = $value; // Add-on fields registered via htmlpp_page_meta_defaults.
 			}
 		}
