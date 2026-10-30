@@ -97,6 +97,12 @@ wp htmlpp versions spring-promo && wp htmlpp restore spring-promo 20260827-17152
 
 The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`.
 
+## Add-ons
+
+- [Forms Converter Add-on For HTML Page Publisher](https://wordpress.org/plugins/forms-converter-add-on-for-html-page-publisher/) by Xavier Castañeda ([GitHub](https://github.com/xcast3d/forms-for-html-page-publisher)) turns forms in uploaded pages into Gravity Forms, Contact Form 7 or WPForms forms. It's independent and supported by its author.
+
+Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
+
 ## PHP API
 
 `htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `delete_file()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.

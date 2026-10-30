@@ -83,9 +83,11 @@ body.htmlpp-active #footer-upgrade {
 /* Break out of WP's default .wrap so the page fills the admin content area
  * edge-to-edge. The negative top margin pulls the hero flush against WP's
  * admin bar — the Help / Screen Options DOM is relocated below the hero
- * by admin.js, so there's nothing floating above to overlap. */
+ * by admin.js, so there's nothing floating above to overlap. The left margin
+ * cancels #wpcontent's padding; the right edge is already the screen's, so
+ * a negative right margin would push the page past it. */
 .htmlpp-page {
-	margin: -10px -20px 0 -22px;
+	margin: -10px 0 0 -22px;
 	padding: 0 0 40px;
 	max-width: none;
 	background: var(--htmlpp-bg);
@@ -1122,7 +1124,6 @@ body.htmlpp-active .htmlpp-content > .notice {
 @media (max-width: 782px) {
 	.htmlpp-page {
 		margin-left: -10px;
-		margin-right: -10px;
 	}
 
 	.htmlpp-hero {

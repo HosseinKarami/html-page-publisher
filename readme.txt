@@ -5,7 +5,7 @@ Tags: html, landing page, claude design, ai, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,6 +73,10 @@ Yes. In a page's settings, set **Custom path** to `promo` to serve it at `https:
 = How do I add Google Analytics, GTM or a pixel to every page? =
 
 **HTML Pages → Settings → Global snippets**. Paste the tags into the head or footer snippet; they are inserted into every published page when it is served (so re-uploading a page never loses them). Pages can opt out individually.
+
+= Do forms on my pages work? =
+
+A form that posts to an outside service (Formspree, HubSpot, Mailchimp and the like) keeps working as uploaded. Many AI-generated pages include a form that doesn't send submissions anywhere. The free [Forms Converter Add-on For HTML Page Publisher](https://wordpress.org/plugins/forms-converter-add-on-for-html-page-publisher/) by Xavier Castañeda finds those forms and turns them into Gravity Forms, Contact Form 7 or WPForms forms. It's an independent add-on, so please ask questions about it in [its support forum](https://wordpress.org/support/plugin/forms-converter-add-on-for-html-page-publisher/).
 
 = Are pages in my XML sitemap? =
 
@@ -162,6 +166,10 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 
 == Changelog ==
 
+= 1.5.3 =
+* Fixed: The plugin's screens were slightly wider than the browser window (20px on desktop, 10px on phones), so the right edge was cut off and the page could scroll sideways.
+* New: FAQ entry on forms in uploaded pages.
+
 = 1.5.2 =
 * Fixed: WordPress's update-available notice, inline notices and other plugins' banners appeared above the plugin's header, squashed against it. On the plugin's screens every notice now appears below the header.
 * New: `htmlpp_serve_priority` filter for the `init` priority pages are served at (default 0), for add-ons that need another plugin, such as a form plugin, loaded first. Set it on `htmlpp_loaded` or earlier.
@@ -248,6 +256,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.5.3 =
+Fixes the plugin's screens being slightly wider than the browser window, which cut off their right edge, most noticeably on phones.
 
 = 1.5.2 =
 Notices from WordPress and other plugins now appear below the plugin header instead of squashed above it. Adds two hooks for add-on developers.

@@ -3,7 +3,7 @@
  * Plugin Name:       HTML Page Publisher
  * Plugin URI:        https://github.com/HosseinKarami/html-page-publisher
  * Description:       Publish standalone HTML files — Claude Design exports or any static HTML — as landing pages at a clean URL. Edit in place, manage images, keep version history. Optional subdomain routing.
- * Version:           1.5.2
+ * Version:           1.5.3
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Author:            Hossein Karami
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HTMLPP_VERSION', '1.5.2' );
+define( 'HTMLPP_VERSION', '1.5.3' );
 define( 'HTMLPP_PLUGIN_FILE', __FILE__ );
 define( 'HTMLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HTMLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
