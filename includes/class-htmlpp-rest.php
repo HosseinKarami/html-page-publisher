@@ -136,6 +136,22 @@ class HTMLPP_REST {
 					'permission_callback' => array( $this, 'permission_write' ),
 					'args'                => array(
 						'html'        => array( 'type' => 'string' ),
+						'edits'       => array(
+							'type'     => 'array',
+							'minItems' => 1,
+							'items'    => array(
+								'type'                 => 'object',
+								'properties'           => array(
+									'find'    => array(
+										'type'      => 'string',
+										'minLength' => 1,
+									),
+									'replace' => array( 'type' => 'string' ),
+								),
+								'required'             => array( 'find', 'replace' ),
+								'additionalProperties' => false,
+							),
+						),
 						'status'      => array(
 							'type' => 'string',
 							'enum' => array( 'published', 'draft' ),
@@ -331,7 +347,7 @@ class HTMLPP_REST {
 	}
 
 	/**
-	 * PUT/PATCH /pages/{slug} — html and/or metadata and/or new_slug.
+	 * PUT/PATCH /pages/{slug} — html or edits, and/or metadata, and/or new_slug.
 	 *
 	 * @param WP_REST_Request $request Request.
 	 * @return WP_REST_Response|WP_Error
@@ -340,8 +356,16 @@ class HTMLPP_REST {
 		$service = $this->service();
 		$slug    = $request['slug'];
 
+		if ( is_string( $request['html'] ) && $request->has_param( 'edits' ) ) {
+			return new WP_Error( 'htmlpp_edits_and_html', __( 'Send either edits or html, not both. Nothing was changed.', 'html-page-publisher' ), array( 'status' => 400 ) );
+		}
 		if ( is_string( $request['html'] ) ) {
 			$result = $service->update_html( $slug, $request['html'] );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+		} elseif ( $request->has_param( 'edits' ) ) {
+			$result = $service->edit_html( $slug, (array) $request['edits'] );
 			if ( is_wp_error( $result ) ) {
 				return $result;
 			}

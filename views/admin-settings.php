@@ -3,6 +3,11 @@
  * Settings page template.
  *
  * @package HTMLPP
+ *
+ * @var string $tab         Current tab: general, tracking or ai.
+ * @var array  $protection  Result of HTMLPP_Storage::direct_access_status().
+ * @var string $recheck_url URL that runs the storage protection check again.
+ * @var array  $ai          Result of HTMLPP_Abilities::status().
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -10,6 +15,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
+$htmlpp_ai_state = HTMLPP_Abilities::state( $ai );
+$htmlpp_tab_icon = array(
+	'general'  => '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/>',
+	'tracking' => '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+	'ai'       => '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z"/>',
+);
 ?>
 <div class="wrap htmlpp-page">
 
@@ -30,7 +41,7 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 		<div class="htmlpp-hero__body">
 			<h1 class="htmlpp-hero__title"><?php esc_html_e( 'Settings', 'html-page-publisher' ); ?></h1>
 			<p class="htmlpp-hero__subtitle">
-				<?php esc_html_e( 'URL structure, subdomain routing, global snippets, SEO, and storage protection.', 'html-page-publisher' ); ?>
+				<?php esc_html_e( 'Page URLs, tracking code and AI assistants.', 'html-page-publisher' ); ?>
 			</p>
 		</div>
 		<div class="htmlpp-hero__actions">
@@ -65,78 +76,20 @@ $htmlpp_back_url = admin_url( 'admin.php?page=html-page-publisher' );
 
 		<?php settings_errors(); ?>
 
-		<?php
-		$htmlpp_status = isset( $protection['status'] ) ? $protection['status'] : 'unknown';
-		$htmlpp_code   = isset( $protection['code'] ) ? (int) $protection['code'] : 0;
-		$htmlpp_nginx  = 'location ~* ^' . wp_parse_url( HTMLPP_Storage::base_url(), PHP_URL_PATH ) . "(-backups)?/ {\n\tdeny all;\n}";
-		?>
-		<div class="htmlpp-card htmlpp-protection htmlpp-protection--<?php echo esc_attr( $htmlpp_status ); ?>">
-			<div class="htmlpp-card__header">
-				<div>
-					<h2 class="htmlpp-card__title"><?php esc_html_e( 'Storage protection', 'html-page-publisher' ); ?></h2>
-					<p class="htmlpp-card__subtitle"><?php esc_html_e( 'Pages should only be reachable at their public URL, never directly from the uploads folder.', 'html-page-publisher' ); ?></p>
-				</div>
-				<a href="<?php echo esc_url( $recheck_url ); ?>" class="htmlpp-button htmlpp-button-ghost"><?php esc_html_e( 'Re-check', 'html-page-publisher' ); ?></a>
-			</div>
-			<div class="htmlpp-card__body">
-				<?php if ( 'blocked' === $htmlpp_status ) : ?>
-					<p class="htmlpp-protection__status">
-						<strong><?php esc_html_e( 'Direct access is blocked.', 'html-page-publisher' ); ?></strong>
-						<?php
-						printf(
-							/* translators: %d: HTTP status code */
-							esc_html__( 'Requests to the uploads folder return HTTP %d.', 'html-page-publisher' ),
-							(int) $htmlpp_code
-						);
-						?>
-					</p>
-				<?php elseif ( 'open' === $htmlpp_status ) : ?>
-					<p class="htmlpp-protection__status">
-						<strong><?php esc_html_e( 'Direct access is open.', 'html-page-publisher' ); ?></strong>
-						<?php esc_html_e( 'Your web server is not honouring the .htaccess rules the plugin writes — usual on nginx, and also on Apache or LiteSpeed configured with AllowOverride None. Pages still work at their public URL, but the raw files can also be fetched from the uploads folder, bypassing the plugin’s caching and access rules. On nginx, add this to your server block and reload; on Apache, allow .htaccess overrides for the uploads directory or add the same rule to your vhost:', 'html-page-publisher' ); ?>
-					</p>
-					<pre class="htmlpp-code-block"><?php echo esc_html( $htmlpp_nginx ); ?></pre>
-				<?php else : ?>
-					<p class="htmlpp-protection__status">
-						<strong><?php esc_html_e( 'Could not verify.', 'html-page-publisher' ); ?></strong>
-						<?php
-						if ( 0 === $htmlpp_code ) {
-							esc_html_e( 'The site could not reach its own uploads URL (loopback requests appear to be blocked on this host).', 'html-page-publisher' );
-						} elseif ( 401 === $htmlpp_code ) {
-							esc_html_e( 'The uploads URL is behind HTTP authentication (HTTP 401), so the plugin’s own rule could not be observed.', 'html-page-publisher' );
-						} elseif ( 404 === $htmlpp_code ) {
-							esc_html_e( 'The uploads URL returned HTTP 404 and a control file could not be reached either, so the uploads URL may not point at this site’s uploads folder (custom upload path, CDN or offload plugin).', 'html-page-publisher' );
-						} elseif ( $htmlpp_code >= 300 && $htmlpp_code < 400 ) {
-							printf(
-								/* translators: %d: HTTP status code */
-								esc_html__( 'The uploads URL redirected (HTTP %d), so the plugin could not observe its own rule.', 'html-page-publisher' ),
-								(int) $htmlpp_code
-							);
-						} else {
-							printf(
-								/* translators: %d: HTTP status code */
-								esc_html__( 'The uploads URL returned HTTP %d.', 'html-page-publisher' ),
-								(int) $htmlpp_code
-							);
-						}
-						?>
-						<?php esc_html_e( 'On Apache and LiteSpeed the plugin’s .htaccess rules apply automatically; on nginx add this to your server block:', 'html-page-publisher' ); ?>
-					</p>
-					<pre class="htmlpp-code-block"><?php echo esc_html( $htmlpp_nginx ); ?></pre>
-				<?php endif; ?>
-			</div>
-		</div>
+		<nav class="htmlpp-tabs" aria-label="<?php esc_attr_e( 'Settings sections', 'html-page-publisher' ); ?>">
+			<?php foreach ( HTMLPP_Admin::settings_tabs() as $htmlpp_slug => $htmlpp_label ) : ?>
+				<a href="<?php echo esc_url( HTMLPP_Admin::settings_url( $htmlpp_slug ) ); ?>" class="htmlpp-tab<?php echo $htmlpp_slug === $tab ? ' is-active' : ''; ?>"<?php echo $htmlpp_slug === $tab ? ' aria-current="page"' : ''; ?>>
+					<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?php echo $htmlpp_tab_icon[ $htmlpp_slug ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Fixed SVG markup defined above. ?></svg>
+					<?php echo esc_html( $htmlpp_label ); ?>
+					<?php if ( 'ai' === $htmlpp_slug && in_array( $htmlpp_ai_state, array( 'ready', 'setup' ), true ) ) : ?>
+						<span class="htmlpp-dot htmlpp-dot--<?php echo esc_attr( $htmlpp_ai_state ); ?>" aria-hidden="true"></span>
+					<?php endif; ?>
+				</a>
+			<?php endforeach; ?>
+		</nav>
 
-		<div class="htmlpp-card">
-			<div class="htmlpp-card__body">
-				<form method="post" action="options.php">
-					<?php
-					settings_fields( 'htmlpp_settings_group' );
-					do_settings_sections( 'htmlpp_settings' );
-					submit_button( __( 'Save Settings', 'html-page-publisher' ) );
-					?>
-				</form>
-			</div>
+		<div class="htmlpp-tab-panel">
+			<?php require HTMLPP_PLUGIN_DIR . 'views/settings/' . $tab . '.php'; ?>
 		</div>
 
 	</div><!-- /.htmlpp-content -->

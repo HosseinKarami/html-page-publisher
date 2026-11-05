@@ -1,0 +1,361 @@
+<!doctype html>
+<!--
+	HTML Page Publisher: WordPress.org banner (source).
+	Render at 1544x500 (deviceScaleFactor 1) for banner-1544x500.png and at
+	deviceScaleFactor 0.5 for banner-772x250.png. Fonts load from Google Fonts.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+	:root {
+		--night: #15123a;
+		--indigo: #1e1b4b;
+		--violet: #6366f1;
+		--lavender: #c7d2fe;
+		--mist: #a5b4fc;
+		--live: #34d399;
+	}
+
+	* {
+		box-sizing: border-box;
+		margin: 0;
+		padding: 0;
+	}
+
+	html,
+	body {
+		width: 1544px;
+		height: 500px;
+		overflow: hidden;
+		background: var(--night);
+	}
+
+	.banner {
+		position: relative;
+		width: 1544px;
+		height: 500px;
+		overflow: hidden;
+		font-family: Inter, system-ui, sans-serif;
+		background:
+			radial-gradient(560px 380px at 1170px 260px, rgba(99, 102, 241, 0.42), transparent 72%),
+			radial-gradient(760px 520px at 120px 40px, rgba(49, 46, 129, 0.95), transparent 70%),
+			linear-gradient(135deg, var(--indigo) 0%, var(--night) 100%);
+	}
+
+	/* Left: lockup, promise, one line of explanation. */
+
+	.copy {
+		position: absolute;
+		left: 96px;
+		top: 72px;
+		width: 640px;
+	}
+
+	.lockup {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		color: #fff;
+		font: 600 23px/1 "Bricolage Grotesque", sans-serif;
+		letter-spacing: -0.01em;
+	}
+
+	.lockup svg {
+		width: 46px;
+		height: 46px;
+		flex: none;
+	}
+
+	h1 {
+		margin-top: 40px;
+		color: #fff;
+		font: 800 88px/0.96 "Bricolage Grotesque", sans-serif;
+		letter-spacing: -0.04em;
+	}
+
+	.sub {
+		margin-top: 28px;
+		max-width: 540px;
+		color: var(--lavender);
+		font: 500 25px/1.42 Inter, sans-serif;
+		letter-spacing: -0.005em;
+	}
+
+	/* Right: the page that went live, with the chat that published it. */
+
+	.page {
+		position: absolute;
+		left: 1128px;
+		top: 72px;
+		width: 344px;
+		border-radius: 18px;
+		background: #fff;
+		box-shadow: 0 34px 70px rgba(6, 4, 28, 0.5), 0 2px 6px rgba(6, 4, 28, 0.25);
+	}
+
+	.page__bar {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		height: 48px;
+		padding: 0 16px;
+		border-bottom: 1px solid #eceefb;
+		border-radius: 18px 18px 0 0;
+		background: #f6f7ff;
+	}
+
+	.page__bar i {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: #d6d9f5;
+	}
+
+	.page__url {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		margin-left: 10px;
+		padding: 6px 12px;
+		border: 1px solid #e0e4fb;
+		border-radius: 999px;
+		background: #fff;
+		color: #3730a3;
+		font: 500 12.5px/1 Inter, sans-serif;
+	}
+
+	.page__url svg {
+		width: 11px;
+		height: 11px;
+	}
+
+	.page__hero {
+		position: relative;
+		height: 132px;
+		margin: 16px 16px 0;
+		overflow: hidden;
+		border-radius: 12px;
+		background: linear-gradient(135deg, #818cf8 0%, #4f46e5 55%, #312e81 100%);
+	}
+
+	.page__hero::before {
+		content: "";
+		position: absolute;
+		right: -26px;
+		top: -34px;
+		width: 150px;
+		height: 150px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.18);
+	}
+
+	.page__hero::after {
+		content: "";
+		position: absolute;
+		left: -40px;
+		bottom: -70px;
+		width: 260px;
+		height: 120px;
+		border-radius: 50%;
+		background: rgba(199, 210, 254, 0.35);
+	}
+
+	.page__body {
+		padding: 18px 20px 24px;
+	}
+
+	.page__title {
+		color: var(--indigo);
+		font: 800 27px/1.05 "Bricolage Grotesque", sans-serif;
+		letter-spacing: -0.03em;
+	}
+
+	.page__text {
+		margin-top: 8px;
+		color: #667085;
+		font: 400 13.5px/1.45 Inter, sans-serif;
+	}
+
+	.page__cta {
+		display: inline-block;
+		margin-top: 16px;
+		padding: 10px 18px;
+		border-radius: 999px;
+		background: var(--violet);
+		color: #fff;
+		font: 600 13px/1 Inter, sans-serif;
+	}
+
+	.live {
+		position: absolute;
+		right: -16px;
+		top: -16px;
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		padding: 8px 14px 8px 11px;
+		border-radius: 999px;
+		background: #059669;
+		box-shadow: 0 10px 24px rgba(5, 150, 105, 0.4);
+		color: #fff;
+		font: 700 14px/1 Inter, sans-serif;
+	}
+
+	.live::before {
+		content: "";
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: #a7f3d0;
+		box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.35);
+	}
+
+	.chat {
+		position: absolute;
+		left: 736px;
+		top: 132px;
+		width: 404px;
+		padding: 20px;
+		border: 1px solid rgba(165, 180, 252, 0.24);
+		border-radius: 22px;
+		background: #120f35;
+		box-shadow: 0 30px 60px rgba(4, 3, 20, 0.55);
+	}
+
+	.msg-user {
+		margin-left: 64px;
+		padding: 13px 16px;
+		border-radius: 18px 18px 6px 18px;
+		background: var(--violet);
+		color: #fff;
+		font: 500 15.5px/1.45 Inter, sans-serif;
+	}
+
+	.msg-ai {
+		display: flex;
+		gap: 12px;
+		margin-top: 16px;
+	}
+
+	.avatar {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		flex: none;
+		border-radius: 10px;
+		background: linear-gradient(135deg, #a5b4fc, #6366f1);
+	}
+
+	.avatar svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.msg-ai__text {
+		color: #e0e7ff;
+		font: 400 15.5px/1.45 Inter, sans-serif;
+	}
+
+	.link {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 10px;
+		padding: 8px 12px;
+		border: 1px solid rgba(165, 180, 252, 0.3);
+		border-radius: 10px;
+		background: rgba(99, 102, 241, 0.16);
+		color: #fff;
+		font: 600 14px/1 Inter, sans-serif;
+	}
+
+	.link::before {
+		content: "";
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--live);
+	}
+
+	.receipt {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 14px;
+		padding-top: 14px;
+		border-top: 1px solid rgba(165, 180, 252, 0.16);
+		color: var(--mist);
+		font: 500 13px/1 Inter, sans-serif;
+	}
+
+	.receipt svg {
+		width: 15px;
+		height: 15px;
+		color: var(--live);
+	}
+</style>
+</head>
+<body>
+<div class="banner">
+
+	<div class="copy">
+		<div class="lockup">
+			<svg viewBox="0 0 256 256" aria-hidden="true">
+				<rect width="256" height="256" rx="56" fill="#ffffff" fill-opacity="0.1"/>
+				<rect x="0.5" y="0.5" width="255" height="255" rx="55.5" fill="none" stroke="#a5b4fc" stroke-opacity="0.35"/>
+				<g transform="translate(64 50)">
+					<path d="M0 12Q0 0 12 0h76l40 40v104q0 12-12 12H12q-12 0-12-12Z" fill="#fff"/>
+					<path d="m88 0 40 40h-28q-12 0-12-12Z" fill="#c7d2fe"/>
+					<g fill="none" stroke="#5b5bd6" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+						<path d="M40 65 24 85l16 20M54 57l20 56M88 65l16 20-16 20"/>
+					</g>
+				</g>
+			</svg>
+			HTML Page Publisher
+		</div>
+		<h1>From chat<br>to live page.</h1>
+		<p class="sub">Claude or ChatGPT publishes your landing pages to WordPress, at a clean URL.</p>
+	</div>
+
+	<div class="page">
+		<span class="live">Live</span>
+		<div class="page__bar">
+			<i></i><i></i><i></i>
+			<span class="page__url">
+				<svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+				example.com/spring-sale
+			</span>
+		</div>
+		<div class="page__hero"></div>
+		<div class="page__body">
+			<p class="page__title">Spring sale, 40% off</p>
+			<p class="page__text">Our best-selling planners and desk kits, this week only.</p>
+			<span class="page__cta">Shop the sale</span>
+		</div>
+	</div>
+
+	<div class="chat">
+		<p class="msg-user">Publish this landing page on my WordPress site at /spring-sale.</p>
+		<div class="msg-ai">
+			<span class="avatar">
+				<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2.5l2.2 6.3 6.3 2.2-6.3 2.2L12 19.5l-2.2-6.3L3.5 11l6.3-2.2Z"/></svg>
+			</span>
+			<div>
+				<p class="msg-ai__text">Done. Your page is live:</p>
+				<span class="link">example.com/spring-sale</span>
+				<p class="receipt">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+					Published with HTML Page Publisher
+				</p>
+			</div>
+		</div>
+	</div>
+
+</div>
+</body>
+</html>

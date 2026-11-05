@@ -275,6 +275,68 @@ class HTMLPP_Page_Service {
 		return $this->describe( $page['slug'] );
 	}
 
+	/**
+	 * Change part of a page's HTML with exact find/replace pairs, so an AI
+	 * agent can change a headline without resending the whole document.
+	 *
+	 * Each pair's `find` must occur exactly once in the HTML as it stands
+	 * after the pairs before it. All pairs apply or none do; the result is
+	 * saved like any other edit (the previous version goes to the history).
+	 *
+	 * @param string $slug  Slug.
+	 * @param array  $edits List of [ 'find' => string, 'replace' => string ].
+	 * @return array|WP_Error Page description.
+	 */
+	public function edit_html( $slug, array $edits ) {
+		$page = $this->get( $slug, true );
+		if ( is_wp_error( $page ) ) {
+			return $page;
+		}
+		if ( empty( $edits ) ) {
+			return new WP_Error( 'htmlpp_no_edits', __( 'No edits were given — nothing was changed.', 'html-page-publisher' ), array( 'status' => 400 ) );
+		}
+
+		$html = $page['html'];
+		foreach ( array_values( $edits ) as $i => $edit ) {
+			$position = $i + 1;
+			$find     = is_array( $edit ) && isset( $edit['find'] ) && is_string( $edit['find'] ) ? $edit['find'] : '';
+			$replace  = is_array( $edit ) && isset( $edit['replace'] ) && is_scalar( $edit['replace'] ) ? (string) $edit['replace'] : null;
+			if ( '' === $find || null === $replace ) {
+				return new WP_Error(
+					'htmlpp_bad_edit',
+					sprintf(
+						/* translators: %d: position of the edit in the list, starting at 1 */
+						__( 'Edit %d needs a non-empty "find" text and a "replace" text. Nothing was changed.', 'html-page-publisher' ),
+						$position
+					),
+					array( 'status' => 400 )
+				);
+			}
+			$count = substr_count( $html, $find );
+			if ( 1 !== $count ) {
+				return new WP_Error(
+					0 === $count ? 'htmlpp_edit_not_found' : 'htmlpp_edit_ambiguous',
+					0 === $count
+						? sprintf(
+							/* translators: %d: position of the edit in the list, starting at 1 */
+							__( 'Edit %d: the "find" text does not appear in the page. Copy it exactly from the current HTML, including spaces and line breaks. Nothing was changed.', 'html-page-publisher' ),
+							$position
+						)
+						: sprintf(
+							/* translators: 1: position of the edit in the list, starting at 1, 2: number of matches */
+							__( 'Edit %1$d: the "find" text appears %2$d times. Include more of the surrounding HTML so it matches exactly once. Nothing was changed.', 'html-page-publisher' ),
+							$position,
+							$count
+						),
+					array( 'status' => 400 )
+				);
+			}
+			$html = substr_replace( $html, $replace, strpos( $html, $find ), strlen( $find ) );
+		}
+
+		return $this->update_html( $page['slug'], $html );
+	}
+
 	/*
 	|--------------------------------------------------------------------------
 	| Metadata, rename, duplicate, delete

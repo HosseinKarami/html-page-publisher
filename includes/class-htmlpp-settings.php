@@ -1,6 +1,6 @@
 <?php
 /**
- * Settings API integration (URL prefix and subdomain).
+ * Settings API integration: page URLs, tracking code, SEO and AI access.
  *
  * @package HTMLPP
  */
@@ -15,6 +15,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class HTMLPP_Settings {
 
 	const OPTION = 'htmlpp_settings';
+
+	/**
+	 * Settings API page ids, one per Settings tab that holds fields. Add-ons
+	 * that add sections to the original 'htmlpp_settings' page show on the
+	 * General tab.
+	 */
+	const PAGE_GENERAL  = 'htmlpp_settings';
+	const PAGE_TRACKING = 'htmlpp_settings_tracking';
 
 	/**
 	 * Register hooks.
@@ -46,9 +54,20 @@ class HTMLPP_Settings {
 			'head_snippet'   => '',
 			'footer_snippet' => '',
 			'canonical'      => true,
+			'ai_enabled'     => true,
 		);
 		$saved    = get_option( self::OPTION, array() );
 		return wp_parse_args( (array) $saved, $defaults );
+	}
+
+	/**
+	 * Whether the site owner lets AI assistants use the plugin's abilities.
+	 *
+	 * @return bool
+	 */
+	public static function ai_enabled() {
+		$settings = self::get_settings();
+		return ! empty( $settings['ai_enabled'] );
 	}
 
 	/**
@@ -68,66 +87,127 @@ class HTMLPP_Settings {
 			)
 		);
 
-		add_settings_section(
-			'htmlpp_url_section',
-			__( 'URL Structure', 'html-page-publisher' ),
-			array( $this, 'section_intro' ),
-			'htmlpp_settings'
-		);
+		add_settings_section( 'htmlpp_url_section', __( 'Page URLs', 'html-page-publisher' ), null, self::PAGE_GENERAL );
 
 		add_settings_field(
 			'url_prefix',
 			__( 'URL prefix', 'html-page-publisher' ),
 			array( $this, 'field_prefix' ),
-			'htmlpp_settings',
-			'htmlpp_url_section'
+			self::PAGE_GENERAL,
+			'htmlpp_url_section',
+			array( 'label_for' => 'htmlpp-url_prefix' )
 		);
 
 		add_settings_field(
 			'subdomain',
-			__( 'Subdomain (optional)', 'html-page-publisher' ),
+			__( 'Subdomain', 'html-page-publisher' ),
 			array( $this, 'field_subdomain' ),
-			'htmlpp_settings',
-			'htmlpp_url_section'
+			self::PAGE_GENERAL,
+			'htmlpp_url_section',
+			array( 'label_for' => 'htmlpp-subdomain' )
 		);
 
-		add_settings_section(
-			'htmlpp_snippets_section',
-			__( 'Global snippets & SEO', 'html-page-publisher' ),
-			array( $this, 'snippets_intro' ),
-			'htmlpp_settings'
-		);
+		add_settings_section( 'htmlpp_snippets_section', __( 'Code on every page', 'html-page-publisher' ), null, self::PAGE_TRACKING );
 
 		add_settings_field(
 			'head_snippet',
 			__( 'Head snippet', 'html-page-publisher' ),
 			array( $this, 'field_head_snippet' ),
-			'htmlpp_settings',
-			'htmlpp_snippets_section'
+			self::PAGE_TRACKING,
+			'htmlpp_snippets_section',
+			array( 'label_for' => 'htmlpp-head_snippet' )
 		);
 
 		add_settings_field(
 			'footer_snippet',
 			__( 'Footer snippet', 'html-page-publisher' ),
 			array( $this, 'field_footer_snippet' ),
-			'htmlpp_settings',
-			'htmlpp_snippets_section'
+			self::PAGE_TRACKING,
+			'htmlpp_snippets_section',
+			array( 'label_for' => 'htmlpp-footer_snippet' )
 		);
+
+		add_settings_section( 'htmlpp_seo_section', __( 'Search engines', 'html-page-publisher' ), null, self::PAGE_TRACKING );
 
 		add_settings_field(
 			'canonical',
 			__( 'Canonical link', 'html-page-publisher' ),
 			array( $this, 'field_canonical' ),
-			'htmlpp_settings',
-			'htmlpp_snippets_section'
+			self::PAGE_TRACKING,
+			'htmlpp_seo_section'
 		);
 	}
 
 	/**
-	 * Snippets section intro.
+	 * One-line description shown under a section's title.
+	 *
+	 * @param string $id Section id.
+	 * @return string
 	 */
-	public function snippets_intro() {
-		echo '<p>' . esc_html__( 'Code added to every published page when it is served — analytics (GA4, GTM, Meta Pixel), fonts, a consent banner, a chat widget. Pages can opt out individually from their Page settings.', 'html-page-publisher' ) . '</p>';
+	private static function section_description( $id ) {
+		switch ( $id ) {
+			case 'htmlpp_url_section':
+				return __( 'Where your pages are served on this site.', 'html-page-publisher' );
+			case 'htmlpp_snippets_section':
+				return __( 'Analytics (GA4, GTM, Meta Pixel), fonts, a consent banner or a chat widget, added to every published page. A page can opt out in its own settings.', 'html-page-publisher' );
+			case 'htmlpp_seo_section':
+				return __( 'How search engines see your pages.', 'html-page-publisher' );
+		}
+		return '';
+	}
+
+	/**
+	 * Print a Settings API page's sections as cards, one row per field.
+	 *
+	 * Replaces do_settings_sections() so the screen matches the rest of the
+	 * plugin, while sections and fields that add-ons register still show.
+	 *
+	 * @param string $page Settings API page id.
+	 */
+	public static function render_sections( $page ) {
+		global $wp_settings_sections, $wp_settings_fields;
+
+		if ( empty( $wp_settings_sections[ $page ] ) ) {
+			return;
+		}
+
+		foreach ( (array) $wp_settings_sections[ $page ] as $section ) {
+			$description = self::section_description( $section['id'] );
+			$fields      = isset( $wp_settings_fields[ $page ][ $section['id'] ] ) ? (array) $wp_settings_fields[ $page ][ $section['id'] ] : array();
+			?>
+			<section class="htmlpp-card htmlpp-settings-card" id="<?php echo esc_attr( $section['id'] ); ?>">
+				<div class="htmlpp-card__header">
+					<div>
+						<h2 class="htmlpp-card__title"><?php echo esc_html( $section['title'] ); ?></h2>
+						<?php if ( '' !== $description ) : ?>
+							<p class="htmlpp-card__subtitle"><?php echo esc_html( $description ); ?></p>
+						<?php endif; ?>
+					</div>
+				</div>
+				<div class="htmlpp-card__body">
+					<?php
+					if ( ! empty( $section['callback'] ) && is_callable( $section['callback'] ) ) {
+						call_user_func( $section['callback'], $section );
+					}
+					foreach ( $fields as $field ) :
+						?>
+						<div class="htmlpp-setting">
+							<div class="htmlpp-setting__label">
+								<?php if ( ! empty( $field['args']['label_for'] ) ) : ?>
+									<label for="<?php echo esc_attr( $field['args']['label_for'] ); ?>"><?php echo esc_html( $field['title'] ); ?></label>
+								<?php else : ?>
+									<span><?php echo esc_html( $field['title'] ); ?></span>
+								<?php endif; ?>
+							</div>
+							<div class="htmlpp-setting__control">
+								<?php call_user_func( $field['callback'], $field['args'] ); ?>
+							</div>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			</section>
+			<?php
+		}
 	}
 
 	/**
@@ -170,9 +250,10 @@ class HTMLPP_Settings {
 	public function field_canonical() {
 		$settings = self::get_settings();
 		?>
-		<label>
+		<input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[canonical]" value="0" />
+		<label class="htmlpp-checkbox">
 			<input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[canonical]" value="1" <?php checked( ! empty( $settings['canonical'] ) ); ?> />
-			<?php esc_html_e( 'Add a <link rel="canonical"> to pages that do not already have one', 'html-page-publisher' ); ?>
+			<span><?php esc_html_e( 'Add a <link rel="canonical"> to pages that do not already have one', 'html-page-publisher' ); ?></span>
 		</label>
 		<p class="description"><?php esc_html_e( 'Points search engines at the page’s public URL so the prefix URL, a custom path and a subdomain never compete with each other.', 'html-page-publisher' ); ?></p>
 		<?php
@@ -181,18 +262,25 @@ class HTMLPP_Settings {
 	/**
 	 * Sanitize submitted settings.
 	 *
+	 * Each Settings tab submits only its own fields, so anything missing from
+	 * the input keeps its saved value. Checkboxes send a hidden "0" first,
+	 * so an unticked box still arrives.
+	 *
 	 * @param array $input Raw input.
 	 * @return array
 	 */
 	public function sanitize( $input ) {
-		$out      = array();
-		$existing = self::get_settings();
+		$input = is_array( $input ) ? $input : array();
+		$out   = self::get_settings();
 
 		// Snippets are raw markup by design (same trust model as uploading a
 		// page). Users without unfiltered_html (multisite site admins) are
 		// limited to what wp_kses_post() allows.
 		foreach ( array( 'head_snippet', 'footer_snippet' ) as $key ) {
-			$raw = isset( $input[ $key ] ) ? (string) $input[ $key ] : '';
+			if ( ! array_key_exists( $key, $input ) ) {
+				continue;
+			}
+			$raw = (string) $input[ $key ];
 			if ( '' !== $raw && ! current_user_can( 'unfiltered_html' ) ) {
 				$raw = wp_kses_post( $raw );
 				if ( trim( $raw ) !== trim( (string) $input[ $key ] ) ) {
@@ -205,38 +293,42 @@ class HTMLPP_Settings {
 			}
 			$out[ $key ] = trim( $raw );
 		}
-		$out['canonical'] = ! empty( $input['canonical'] );
-		unset( $existing );
 
-		$prefix = isset( $input['url_prefix'] ) ? sanitize_title( $input['url_prefix'] ) : 'pages';
-		if ( '' === $prefix ) {
-			$prefix = 'pages';
+		foreach ( array( 'canonical', 'ai_enabled' ) as $key ) {
+			if ( array_key_exists( $key, $input ) ) {
+				$out[ $key ] = ! empty( $input[ $key ] );
+			}
 		}
 
-		// Reserved prefixes that would collide with WordPress core routing.
-		$reserved = array( 'wp-admin', 'wp-content', 'wp-includes', 'wp-json', 'feed', 'comments', 'trackback', 'xmlrpc.php' );
-		if ( in_array( $prefix, $reserved, true ) ) {
-			add_settings_error(
-				self::OPTION,
-				'htmlpp_reserved_prefix',
-				sprintf(
-					/* translators: %s: attempted prefix */
-					__( '"%s" is reserved and cannot be used as a URL prefix. Falling back to "pages".', 'html-page-publisher' ),
-					$prefix
-				)
-			);
-			$prefix = 'pages';
-		}
-		$out['url_prefix'] = $prefix;
+		if ( array_key_exists( 'url_prefix', $input ) ) {
+			$prefix = sanitize_title( $input['url_prefix'] );
+			if ( '' === $prefix ) {
+				$prefix = 'pages';
+			}
 
-		$sub = isset( $input['subdomain'] ) ? trim( (string) $input['subdomain'] ) : '';
-		if ( '' !== $sub ) {
-			$sub = strtolower( $sub );
+			// Reserved prefixes that would collide with WordPress core routing.
+			$reserved = array( 'wp-admin', 'wp-content', 'wp-includes', 'wp-json', 'feed', 'comments', 'trackback', 'xmlrpc.php' );
+			if ( in_array( $prefix, $reserved, true ) ) {
+				add_settings_error(
+					self::OPTION,
+					'htmlpp_reserved_prefix',
+					sprintf(
+						/* translators: %s: attempted prefix */
+						__( '"%s" is reserved and cannot be used as a URL prefix. Falling back to "pages".', 'html-page-publisher' ),
+						$prefix
+					)
+				);
+				$prefix = 'pages';
+			}
+			$out['url_prefix'] = $prefix;
+		}
+
+		if ( array_key_exists( 'subdomain', $input ) ) {
+			$sub = strtolower( trim( (string) $input['subdomain'] ) );
 			// Strip protocol if user pasted a URL.
-			$sub = preg_replace( '#^https?://#', '', $sub );
-			$sub = rtrim( $sub, '/' );
+			$sub = rtrim( (string) preg_replace( '#^https?://#', '', $sub ), '/' );
 
-			if ( preg_match( '/^[a-z0-9.\-]+\.[a-z]{2,}$/', $sub ) ) {
+			if ( '' === $sub || preg_match( '/^[a-z0-9.\-]+\.[a-z]{2,}$/', $sub ) ) {
 				$out['subdomain'] = $sub;
 			} else {
 				add_settings_error(
@@ -246,18 +338,9 @@ class HTMLPP_Settings {
 				);
 				$out['subdomain'] = '';
 			}
-		} else {
-			$out['subdomain'] = '';
 		}
 
 		return $out;
-	}
-
-	/**
-	 * Section intro text.
-	 */
-	public function section_intro() {
-		echo '<p>' . esc_html__( 'Configure where your HTML pages are served from.', 'html-page-publisher' ) . '</p>';
 	}
 
 	/**
@@ -268,6 +351,7 @@ class HTMLPP_Settings {
 		$home     = trailingslashit( home_url() );
 		?>
 		<input type="text"
+			id="htmlpp-url_prefix"
 			name="<?php echo esc_attr( self::OPTION ); ?>[url_prefix]"
 			value="<?php echo esc_attr( $settings['url_prefix'] ); ?>"
 			class="regular-text"
@@ -291,18 +375,20 @@ class HTMLPP_Settings {
 		$settings = self::get_settings();
 		?>
 		<input type="text"
+			id="htmlpp-subdomain"
 			name="<?php echo esc_attr( self::OPTION ); ?>[subdomain]"
 			value="<?php echo esc_attr( $settings['subdomain'] ); ?>"
 			class="regular-text"
 			placeholder="sales.example.com" />
-		<p class="description">
-			<?php
-			esc_html_e(
-				'Optional. If set, pages are also served at the root of this hostname (e.g. https://sales.example.com/your-slug/). You must (1) create a DNS record pointing the subdomain at this server, and (2) configure your web server / hosting control panel to serve the subdomain from this WordPress install. The URL prefix above is ignored on the subdomain.',
-				'html-page-publisher'
-			);
-			?>
-		</p>
+		<p class="description"><?php esc_html_e( 'Optional. Also serves every page at the root of another hostname, such as https://sales.example.com/your-slug/.', 'html-page-publisher' ); ?></p>
+		<details class="htmlpp-details">
+			<summary><?php esc_html_e( 'How to set up a subdomain', 'html-page-publisher' ); ?></summary>
+			<ol>
+				<li><?php esc_html_e( 'Create a DNS record that points the subdomain at this server.', 'html-page-publisher' ); ?></li>
+				<li><?php esc_html_e( 'In your hosting panel or web server, serve the subdomain from this WordPress install.', 'html-page-publisher' ); ?></li>
+				<li><?php esc_html_e( 'Enter the hostname here and save. The URL prefix isn’t used on the subdomain.', 'html-page-publisher' ); ?></li>
+			</ol>
+		</details>
 		<?php
 	}
 }

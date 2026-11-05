@@ -7,6 +7,7 @@
  *  - Show selected filename inside dropzone
  *  - Reposition WP's Help / Screen Options DOM to sit below the hero
  *  - Initialize WP's CodeMirror on the page editor textarea
+ *  - Settings → AI assistants: app picker, password, setup text, copy
  */
 ( function () {
 	'use strict';
@@ -19,7 +20,222 @@
 		initAssetReplace();
 		initReviewNotice();
 		initSearch();
+		initCopy();
+		initAppPicker();
+		initConnect();
 	} );
+
+	/**
+	 * Copy buttons: data-htmlpp-copy="#selector" copies that element's text,
+	 * data-htmlpp-copy-text copies the attribute's value.
+	 */
+	function initCopy() {
+		document.addEventListener( 'click', function ( e ) {
+			var btn = e.target.closest ? e.target.closest( '[data-htmlpp-copy], [data-htmlpp-copy-text]' ) : null;
+			if ( ! btn ) {
+				return;
+			}
+			e.preventDefault();
+			var text = btn.getAttribute( 'data-htmlpp-copy-text' );
+			if ( null === text ) {
+				var target = document.querySelector( btn.getAttribute( 'data-htmlpp-copy' ) );
+				text = target ? target.textContent.trim() : '';
+			}
+			if ( ! text ) {
+				return;
+			}
+			copyText( text, function () {
+				var label = btn.querySelector( '.htmlpp-copy__label' );
+				var original = label ? label.textContent : '';
+				btn.classList.add( 'is-copied' );
+				if ( label ) {
+					label.textContent = ( window.htmlppL10n && window.htmlppL10n.copied ) || 'Copied';
+				}
+				setTimeout( function () {
+					btn.classList.remove( 'is-copied' );
+					if ( label ) {
+						label.textContent = original;
+					}
+				}, 1500 );
+			} );
+		} );
+	}
+
+	/**
+	 * Write text to the clipboard, with a fallback for older browsers and
+	 * non-secure origins.
+	 *
+	 * @param {string}   text Text to copy.
+	 * @param {Function} done Called once copied.
+	 */
+	function copyText( text, done ) {
+		if ( navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext ) {
+			navigator.clipboard.writeText( text ).then( done, function () {
+				fallbackCopy( text );
+				done();
+			} );
+			return;
+		}
+		fallbackCopy( text );
+		done();
+	}
+
+	function fallbackCopy( text ) {
+		var ta = document.createElement( 'textarea' );
+		ta.value = text;
+		ta.setAttribute( 'readonly', '' );
+		ta.style.position = 'fixed';
+		ta.style.opacity = '0';
+		document.body.appendChild( ta );
+		ta.select();
+		try { document.execCommand( 'copy' ); } catch ( _e ) {}
+		document.body.removeChild( ta );
+	}
+
+	/**
+	 * AI assistants tab: show only the steps for the chosen app, and
+	 * remember the choice in this browser.
+	 */
+	function initAppPicker() {
+		var radios = Array.prototype.slice.call( document.querySelectorAll( 'input[name="htmlpp-app"]' ) );
+		if ( ! radios.length ) {
+			return;
+		}
+		var KEY = 'htmlpp-ai-app';
+		var saved = null;
+		try {
+			saved = window.localStorage.getItem( KEY );
+		} catch ( _e ) {}
+		radios.forEach( function ( radio ) {
+			if ( saved && radio.value === saved ) {
+				radio.checked = true;
+			}
+			radio.addEventListener( 'change', function () {
+				apply();
+				try {
+					window.localStorage.setItem( KEY, radio.value );
+				} catch ( _e ) {}
+			} );
+		} );
+
+		function apply() {
+			var current = radios.filter( function ( r ) {
+				return r.checked;
+			} )[0] || radios[0];
+			document.querySelectorAll( '[data-apps]' ).forEach( function ( el ) {
+				el.hidden = el.getAttribute( 'data-apps' ).split( ' ' ).indexOf( current.value ) === -1;
+			} );
+			document.querySelectorAll( '[data-htmlpp-app-name]' ).forEach( function ( el ) {
+				el.textContent = current.getAttribute( 'data-name' );
+			} );
+		}
+		apply();
+	}
+
+	/**
+	 * AI assistants tab: create an application password (or take a pasted
+	 * one) and fill it into the setup text. The password stays in this page
+	 * only; WordPress stores just its hash.
+	 */
+	function initConnect() {
+		var cfg = window.htmlppConnect;
+		var create = document.querySelector( '[data-htmlpp-create-password]' );
+		var paste = document.querySelector( '[data-htmlpp-paste-password]' );
+		var status = document.querySelector( '[data-htmlpp-password-status]' );
+		var step = document.querySelector( '[data-htmlpp-password-step]' );
+		if ( ! cfg || ( ! create && ! paste ) ) {
+			return;
+		}
+		var tokens = Array.prototype.slice.call( document.querySelectorAll( '[data-htmlpp-token]' ) );
+		tokens.forEach( function ( el ) {
+			el.setAttribute( 'data-placeholder', el.textContent );
+		} );
+
+		function setStatus( text, isError ) {
+			if ( status ) {
+				status.textContent = text;
+				status.classList.toggle( 'is-error', !! isError );
+			}
+		}
+
+		function fill( password ) {
+			var auth = password ? base64( cfg.username + ':' + password ) : '';
+			tokens.forEach( function ( el ) {
+				var value = 'auth' === el.getAttribute( 'data-htmlpp-token' ) ? auth : password;
+				el.textContent = value || el.getAttribute( 'data-placeholder' );
+				el.classList.toggle( 'is-filled', !! value );
+			} );
+			if ( step ) {
+				step.classList.toggle( 'is-done', !! password );
+			}
+		}
+
+		if ( paste ) {
+			paste.addEventListener( 'input', function () {
+				var value = paste.value.replace( /[^A-Za-z0-9]/g, '' );
+				var ok = value.length >= 24;
+				fill( ok ? value : '' );
+				setStatus( ok ? cfg.pasted : '' );
+			} );
+		}
+
+		if ( create ) {
+			create.addEventListener( 'click', function () {
+				var picked = document.querySelector( 'input[name="htmlpp-app"]:checked' );
+				var app = picked ? picked.getAttribute( 'data-name' ) : 'AI assistant';
+				var now = new Date();
+				var pad = function ( n ) {
+					return ( n < 10 ? '0' : '' ) + n;
+				};
+				var stamp = now.getFullYear() + '-' + pad( now.getMonth() + 1 ) + '-' + pad( now.getDate() ) + ' ' + pad( now.getHours() ) + ':' + pad( now.getMinutes() );
+				var name = cfg.appName.replace( '%1$s', app ).replace( '%2$s', stamp );
+				create.disabled = true;
+				setStatus( cfg.creating );
+				fetch( cfg.restUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': cfg.nonce
+					},
+					body: JSON.stringify( { name: name } )
+				} ).then( function ( res ) {
+					return res.json().then( function ( body ) {
+						return { ok: res.ok, body: body };
+					} );
+				} ).then( function ( r ) {
+					create.disabled = false;
+					if ( ! r.ok || ! r.body || ! r.body.password ) {
+						setStatus( cfg.failed + ' ' + ( ( r.body && r.body.message ) || '' ), true );
+						return;
+					}
+					if ( paste ) {
+						paste.value = '';
+					}
+					fill( r.body.password );
+					setStatus( cfg.created.replace( '%s', r.body.name || name ) );
+				} ).catch( function ( err ) {
+					create.disabled = false;
+					setStatus( cfg.failed + ' ' + ( err && err.message ? err.message : '' ), true );
+				} );
+			} );
+		}
+	}
+
+	/**
+	 * Base64 of a UTF-8 string (usernames may contain any character).
+	 *
+	 * @param {string} str Text.
+	 * @return {string} Base64.
+	 */
+	function base64( str ) {
+		var bytes = new TextEncoder().encode( str );
+		var bin = '';
+		for ( var i = 0; i < bytes.length; i++ ) {
+			bin += String.fromCharCode( bytes[ i ] );
+		}
+		return window.btoa( bin );
+	}
 
 	/**
 	 * Client-side filter for the pages table.

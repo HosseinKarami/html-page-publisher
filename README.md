@@ -11,6 +11,7 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 ## Features
 
 - Upload a single `.html` file + assets, or a whole ZIP bundle (index.html + css/js/images/fonts), and get a public URL
+- **AI assistants can publish for you** (WordPress 6.9+): page actions are registered as WordPress abilities, so MCP plugins (the official MCP Adapter, WPVibe, Easy MCP AI) offer them to Claude, ChatGPT, Cursor and others. No delete ability is offered
 - **Drafts & previews**: hidden from visitors and search engines, shareable preview link with a secret token
 - **Custom paths / front page**: serve a page at `/promo/` or as the site's homepage
 - **Global snippets**: GA4/GTM/pixels/fonts injected at serve time on every page, per-page opt-out
@@ -61,7 +62,7 @@ Base: `https://example.com/wp-json/htmlpp/v1` — authenticate with an [applicat
 | `GET` | `/pages` | — |
 | `POST` | `/pages` | multipart `slug`, `file` (.html/.zip), `files[]`, `status`, `overwrite` — or JSON `{slug, html, status, overwrite}` |
 | `GET` | `/pages/{slug}?html=1` | — |
-| `PUT` | `/pages/{slug}` | JSON any of `html`, `status`, `path`, `noindex`, `no_snippets`, `new_slug` |
+| `PUT` | `/pages/{slug}` | JSON any of `html` or `edits`, `status`, `path`, `noindex`, `no_snippets`, `new_slug` |
 | `DELETE` | `/pages/{slug}` | — |
 | `POST` | `/pages/{slug}/duplicate` | `{new_slug}` |
 | `GET` / `DELETE` | `/pages/{slug}/preview-link` | get / reset the draft preview link |
@@ -81,6 +82,51 @@ returns `409 htmlpp_exists`; validation errors return `400`/`409` with a `code`
 (`htmlpp_bad_path`, `htmlpp_path_taken`, …) in the standard WP REST error shape.
 `files[]` can only be sent as multipart, not JSON.
 
+`edits` changes part of a page without resending it: a list of exact
+find-and-replace pairs, `{"edits":[{"find":"Old headline","replace":"New headline"}]}`.
+Each `find` must occur exactly once in the HTML as it stands after the pairs
+before it. If one doesn't match (`htmlpp_edit_not_found`) or matches more than
+once (`htmlpp_edit_ambiguous`), nothing is changed. Sending both `html` and
+`edits` returns `400 htmlpp_edits_and_html`.
+
+## AI assistants (Abilities API + MCP)
+
+On WordPress 6.9+ the plugin registers these [abilities](https://developer.wordpress.org/apis/abilities-api/)
+in the `html-page-publisher` category. They're marked public (`meta.public`,
+`meta.show_in_rest` and `meta.mcp.public`), so the [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/)
+and other MCP plugins offer them to AI assistants, and core serves them at
+`/wp-json/wp-abilities/v1`.
+
+| Ability | Does | Hints |
+| --- | --- | --- |
+| `html-page-publisher/list-pages` | List pages, optionally by `status` | read-only |
+| `html-page-publisher/get-page` | One page; `include_html`, `include_files` | read-only |
+| `html-page-publisher/publish-page` | New page from an HTML document, with `status`, `path`, `noindex` and up to 20 `files` (text or base64). Never overwrites | additive |
+| `html-page-publisher/update-page` | `edits` or `html`, plus `status`, `path`, `noindex`, `no_snippets`, `new_slug` | destructive (previous version kept) |
+| `html-page-publisher/duplicate-page` | Copy to a new slug as a draft | additive |
+| `html-page-publisher/list-versions` | Saved versions, newest first | read-only |
+| `html-page-publisher/restore-version` | Restore a version (the current one is saved first) | destructive (undoable) |
+| `html-page-publisher/add-page-file` | One file into `assets/`, text or base64; returns the stored name | additive |
+
+Reads need the plugin's capability (`manage_options`); writes also need
+`unfiltered_html`, as in the REST API. Deleting pages or files isn't
+offered. **HTML Pages → Settings → AI assistants** walks a site owner through
+connecting an app (it checks the Abilities API and MCP plugins, creates an
+application password and fills in the setup text), and has a switch that stops
+registering the abilities. `htmlpp_register_abilities` defaults to that switch.
+
+```php
+// Turn the abilities off entirely.
+add_filter( 'htmlpp_register_abilities', '__return_false' );
+
+// Keep one ability for PHP use only (hidden from MCP and REST clients).
+add_filter( 'htmlpp_abilities_public', function ( $public, $name ) {
+	return 'html-page-publisher/publish-page' === $name ? false : $public;
+}, 10, 2 );
+```
+
+Core's `wp_register_ability_args` filter can change anything else about them.
+
 ## WP-CLI
 
 ```bash
@@ -95,7 +141,7 @@ wp htmlpp versions spring-promo && wp htmlpp restore spring-promo 20260827-17152
 
 ## Claude Code
 
-The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`.
+The repository is a Claude Code plugin (`.claude-plugin/plugin.json`) with one skill, `publish-to-wordpress`, that walks Claude through publishing a generated page via the REST API with an application password. To use it, copy `skills/publish-to-wordpress` into your project's `.claude/skills/`. If the site has an MCP plugin connected to Claude, the abilities above do the same without the skill.
 
 ## Add-ons
 
@@ -105,7 +151,7 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 
 ## PHP API
 
-`htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `delete_file()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.
+`htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `edit_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `delete_file()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.
 
 ## Hooks
 
@@ -147,6 +193,8 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 | `htmlpp_zip_allowed_extensions` / `htmlpp_zip_max_bytes` / `htmlpp_zip_max_files` | filter | ZIP import limits |
 | `htmlpp_svg_allowed_elements` | filter | SVG elements that survive sanitizing (`script`, `foreignObject` and friends can never be re-allowed) |
 | `htmlpp_svg_max_bytes` / `htmlpp_svg_csp` | filter | SVG size limit / Content-Security-Policy sent with every SVG |
+| `htmlpp_register_abilities` | filter | Return `false` to register no abilities (WordPress 6.9+) |
+| `htmlpp_abilities_public` | filter | Whether an ability is offered to MCP and REST clients; `( $public, $name )` |
 
 ## Development
 
@@ -163,7 +211,7 @@ Try it without installing anything: the plugin ships a [WordPress Playground blu
 ```bash
 composer install
 composer lint   # WordPress Coding Standards + PHPCompatibility
-composer test   # PHPUnit (WordPress-free unit tests for the sanitizer and router)
+composer test   # PHPUnit (WordPress-free unit tests: sanitizer, router, page service, abilities)
 ```
 
 GitHub Actions runs `php -l` on PHP 7.4–8.4, phpcs, and the unit tests on every push and pull request.
