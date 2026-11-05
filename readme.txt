@@ -176,11 +176,12 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 
 == Screenshots ==
 
-1. Upload a new page or ZIP bundle and see everything you have published, with each page's title, status and public URL.
-2. Edit a published page in the dashboard with the native WordPress code editor.
-3. Files &amp; Assets: every file of an imported bundle — images, CSS, JS, fonts — with replace and delete in place.
-4. Settings: page URLs, tracking code and SEO, and step-by-step setup for AI assistants.
-5. Page settings: draft/published, custom path or front page, noindex, rename and duplicate.
+1. Your pages in one place: upload an HTML file or ZIP bundle, see each page's status and URL, and whether an AI assistant is connected.
+2. Connect Claude Code, Claude Desktop, Cursor, Claude or ChatGPT: pick your app and follow the steps. It creates the password and fills in the setup for you.
+3. Edit a page's HTML in the dashboard with the WordPress code editor. Every save keeps the previous version.
+4. Files &amp; Assets: every file of a page (images, CSS, JS, fonts) with replace and delete in place.
+5. Page settings: draft or published, custom path or front page, noindex, rename and duplicate.
+6. Settings: page URLs and an optional subdomain, tracking code and SEO, and AI assistants, each on its own tab.
 
 == Changelog ==
 
