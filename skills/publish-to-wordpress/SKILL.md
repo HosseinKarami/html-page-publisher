@@ -9,6 +9,10 @@ HTML Page Publisher (free WordPress plugin) serves a standalone HTML file at
 `https://example.com/pages/<slug>/` — no theme, no page builder. This skill
 drives its REST API (`/wp-json/htmlpp/v1`).
 
+If you already have tools named `html-page-publisher/…` (for example
+`publish-page`, through an MCP connection to the site), use those instead:
+they need no credentials from the user.
+
 ## What you need from the user (ask once, then remember for the session)
 
 1. **Site URL** — e.g. `https://example.com` (the WordPress home URL).
@@ -100,6 +104,7 @@ user**, and mention anything in `skipped`/`file_errors`.
 
 | Task | Request |
 | --- | --- |
+| Change part of the HTML | `PUT /pages/{slug}` JSON `{"edits": [{"find": "exact old text", "replace": "new text"}]}` (each `find` must appear exactly once; nothing changes if one doesn't match) |
 | Replace the HTML | `PUT /pages/{slug}` JSON `{"html": "…"}` |
 | Publish a draft | `PUT /pages/{slug}` JSON `{"status": "published"}` |
 | Serve at `/promo/` or as the front page | `PUT /pages/{slug}` JSON `{"path": "promo"}` or `{"path": "/"}` |

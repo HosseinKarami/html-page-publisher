@@ -166,8 +166,12 @@ function get_post_types( $args = array(), $output = 'names' ) {
 	return array();
 }
 
-function wp_json_encode( $data ) {
-	return json_encode( $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+function wp_json_encode( $data, $options = 0 ) {
+	return json_encode( $data, $options ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+}
+
+function add_settings_error( $setting, $code, $message, $type = 'error' ) {
+	$GLOBALS['htmlpp_test_settings_errors'][] = $code;
 }
 
 if ( ! class_exists( 'WP_Error' ) ) {
@@ -325,6 +329,37 @@ function htmlpp() {
 	return $plugin;
 }
 
+/**
+ * Abilities API stand-ins: registrations are recorded, never run.
+ */
+function wp_register_ability( $name, $args ) {
+	$GLOBALS['htmlpp_test_abilities'][ $name ] = $args;
+	return true;
+}
+
+function wp_register_ability_category( $slug, $args ) {
+	$GLOBALS['htmlpp_test_ability_categories'][ $slug ] = $args;
+	return true;
+}
+
+function rest_sanitize_boolean( $value ) {
+	if ( is_string( $value ) ) {
+		$value = strtolower( $value );
+		if ( in_array( $value, array( 'false', '0' ), true ) ) {
+			$value = false;
+		}
+	}
+	return (bool) $value;
+}
+
+function wp_max_upload_size() {
+	return $GLOBALS['htmlpp_test_max_upload'] ?? 8 * MB_IN_BYTES;
+}
+
+function wp_tempnam( $filename = '' ) {
+	return tempnam( sys_get_temp_dir(), 'htmlpp' );
+}
+
 define( 'HTMLPP_PLUGIN_FILE', dirname( __DIR__ ) . '/html-page-publisher.php' );
 
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-plugin.php';
@@ -338,3 +373,4 @@ require_once dirname( __DIR__ ) . '/includes/class-htmlpp-zip.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-uploader.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-admin.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-page-service.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-abilities.php';

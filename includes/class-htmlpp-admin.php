@@ -78,6 +78,7 @@ class HTMLPP_Admin {
 		add_action( 'admin_notices', array( $this, 'maybe_review_notice' ) );
 		add_filter( 'plugin_row_meta', array( $this, 'plugin_row_meta' ), 10, 2 );
 		add_filter( 'plugin_action_links_' . plugin_basename( HTMLPP_PLUGIN_FILE ), array( $this, 'plugin_action_links' ) );
+		add_filter( 'site_status_tests', array( $this, 'site_status_tests' ) );
 	}
 
 	/**
@@ -145,10 +146,36 @@ class HTMLPP_Admin {
 	/**
 	 * Admin URL of the settings screen.
 	 *
+	 * @param string $tab Optional tab: general, tracking or ai.
 	 * @return string
 	 */
-	public static function settings_url() {
-		return admin_url( 'admin.php?page=' . self::PAGE_SLUG . '-settings' );
+	public static function settings_url( $tab = '' ) {
+		$url = admin_url( 'admin.php?page=' . self::PAGE_SLUG . '-settings' );
+		return '' !== $tab ? add_query_arg( 'tab', $tab, $url ) : $url;
+	}
+
+	/**
+	 * Settings tabs: slug => label.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function settings_tabs() {
+		return array(
+			'general'  => __( 'General', 'html-page-publisher' ),
+			'tracking' => __( 'Tracking & SEO', 'html-page-publisher' ),
+			'ai'       => __( 'AI assistants', 'html-page-publisher' ),
+		);
+	}
+
+	/**
+	 * The Settings tab this request asks for.
+	 *
+	 * @return string
+	 */
+	private function current_settings_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only tab selector.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'general';
+		return array_key_exists( $tab, self::settings_tabs() ) ? $tab : 'general';
 	}
 
 	/*
@@ -560,8 +587,12 @@ class HTMLPP_Admin {
 					esc_html__( 'Only administrators can upload. Page HTML is served as-is, including any <script> tags, so only upload HTML you trust. SVG files are different: every SVG is sanitized on upload (scripts, event handlers and unsafe links are removed) and served in a sandbox, so an SVG can never run script on your site.', 'html-page-publisher' ) . '</p>' .
 					'<p><strong>' . esc_html__( 'Will uninstalling delete my pages?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'No. Uninstall removes the plugin’s settings but keeps your pages, their version history, and each page’s metadata (so a reinstall never republishes a former draft). Delete the two uploads folders manually if you want everything gone.', 'html-page-publisher' ) . '</p>' .
-					'<p><strong>' . esc_html__( 'Can I publish from a script or an AI agent?', 'html-page-publisher' ) . '</strong><br>' .
-					esc_html__( 'Yes. The plugin exposes a REST API at /wp-json/htmlpp/v1 (authenticate with an application password from Users → Profile), and WP-CLI commands under "wp htmlpp" when you have shell access.', 'html-page-publisher' ) . '</p>' .
+					'<p><strong>' . esc_html__( 'Can Claude, ChatGPT or a script publish for me?', 'html-page-publisher' ) . '</strong><br>' .
+					sprintf(
+						/* translators: %s: link to the AI assistants settings tab */
+						esc_html__( 'Yes. On WordPress 6.9 or later, AI assistants connect through an MCP plugin: %s walks you through it. Scripts can use the REST API at /wp-json/htmlpp/v1 with an application password, or WP-CLI commands under "wp htmlpp".', 'html-page-publisher' ),
+						'<a href="' . esc_url( self::settings_url( 'ai' ) ) . '">' . esc_html__( 'Settings → AI assistants', 'html-page-publisher' ) . '</a>'
+					) . '</p>' .
 					'<p><strong>' . esc_html__( 'Does it work with caching / CDNs?', 'html-page-publisher' ) . '</strong><br>' .
 					esc_html__( 'Yes. Pages are served with ETag and Last-Modified headers and answer conditional requests with 304, so browsers and CDNs revalidate cheaply. Edits show immediately. Use the htmlpp_cache_max_age filter to let CDNs cache the HTML itself.', 'html-page-publisher' ) . '</p>',
 			)
@@ -695,6 +726,160 @@ class HTMLPP_Admin {
 		return array_merge( $links, $extra );
 	}
 
+	/**
+	 * Print the install / activate control for an MCP plugin on the AI
+	 * assistants tab.
+	 *
+	 * @param string $file Plugin file, e.g. mcp-adapter/mcp-adapter.php.
+	 * @param string $slug WordPress.org slug.
+	 * @param string $name Plugin name.
+	 * @param array  $ai   HTMLPP_Abilities::status().
+	 */
+	public static function mcp_plugin_action( $file, $slug, $name, $ai ) {
+		if ( in_array( $file, $ai['active'], true ) ) {
+			echo '<span class="htmlpp-pill htmlpp-pill--ready">' . esc_html__( 'Active', 'html-page-publisher' ) . '</span>';
+			return;
+		}
+		if ( in_array( $file, $ai['installed'], true ) ) {
+			if ( current_user_can( 'activate_plugins' ) ) {
+				printf(
+					'<a class="htmlpp-button-ghost htmlpp-button--sm" href="%s">%s</a>',
+					esc_url( wp_nonce_url( self_admin_url( 'plugins.php?action=activate&plugin=' . rawurlencode( $file ) ), 'activate-plugin_' . $file ) ),
+					/* translators: %s: plugin name */
+					esc_html( sprintf( __( 'Activate %s', 'html-page-publisher' ), $name ) )
+				);
+				return;
+			}
+		} elseif ( current_user_can( 'install_plugins' ) ) {
+			printf(
+				'<a class="htmlpp-button-ghost htmlpp-button--sm thickbox open-plugin-details-modal" href="%s">%s</a>',
+				esc_url( self_admin_url( 'plugin-install.php?tab=plugin-information&plugin=' . rawurlencode( $slug ) . '&TB_iframe=true&width=772&height=600' ) ),
+				/* translators: %s: plugin name */
+				esc_html( sprintf( __( 'Install %s', 'html-page-publisher' ), $name ) )
+			);
+			return;
+		}
+		/* translators: %s: plugin name */
+		echo '<span class="htmlpp-muted">' . esc_html( sprintf( __( 'Ask an administrator to install %s.', 'html-page-publisher' ), $name ) ) . '</span>';
+	}
+
+	/**
+	 * Print a dark code block with a Copy button. {{AUTH}} and {{PASSWORD}}
+	 * become placeholders that the AI assistants tab fills in.
+	 *
+	 * @param string $label Shown in the block's top bar, e.g. Terminal.
+	 * @param string $code  The code.
+	 * @param string $id    Unique element id.
+	 */
+	public static function code_block( $label, $code, $id ) {
+		$html    = str_replace(
+			array( '{{AUTH}}', '{{PASSWORD}}' ),
+			array(
+				'<span class="htmlpp-token" data-htmlpp-token="auth">' . esc_html__( 'CREATE-A-PASSWORD-IN-THE-STEP-ABOVE', 'html-page-publisher' ) . '</span>',
+				'<span class="htmlpp-token" data-htmlpp-token="password">' . esc_html__( 'CREATE-A-PASSWORD-IN-THE-STEP-ABOVE', 'html-page-publisher' ) . '</span>',
+			),
+			esc_html( $code )
+		);
+		$allowed = array(
+			'span' => array(
+				'class'             => true,
+				'data-htmlpp-token' => true,
+			),
+		);
+		?>
+		<div class="htmlpp-codeblock">
+			<div class="htmlpp-codeblock__bar">
+				<span class="htmlpp-codeblock__label"><?php echo esc_html( $label ); ?></span>
+				<?php self::copy_button( '#' . $id ); ?>
+			</div>
+			<pre class="htmlpp-codeblock__code"><code id="<?php echo esc_attr( $id ); ?>"><?php echo wp_kses( $html, $allowed ); ?></code></pre>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Print a small Copy button.
+	 *
+	 * @param string $target CSS selector of the element whose text it copies.
+	 * @param string $text   Or the text itself, when there is no element.
+	 */
+	public static function copy_button( $target, $text = '' ) {
+		?>
+		<button type="button" class="htmlpp-copy" <?php echo '' !== $target ? 'data-htmlpp-copy="' . esc_attr( $target ) . '"' : 'data-htmlpp-copy-text="' . esc_attr( $text ) . '"'; ?>>
+			<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+			</svg>
+			<span class="htmlpp-copy__label"><?php esc_html_e( 'Copy', 'html-page-publisher' ); ?></span>
+		</button>
+		<?php
+	}
+
+	/**
+	 * Add the storage protection check to Tools → Site Health.
+	 *
+	 * @param array $tests Site Health tests.
+	 * @return array
+	 */
+	public function site_status_tests( $tests ) {
+		$tests['direct']['htmlpp_storage_protection'] = array(
+			'label' => __( 'HTML Page Publisher storage protection', 'html-page-publisher' ),
+			'test'  => array( $this, 'site_health_protection' ),
+		);
+		return $tests;
+	}
+
+	/**
+	 * Site Health result for the storage protection check.
+	 *
+	 * @return array
+	 */
+	public function site_health_protection() {
+		$result = HTMLPP_Storage::direct_access_status();
+		$status = isset( $result['status'] ) ? $result['status'] : 'unknown';
+		$rule   = '<pre><code>' . esc_html( HTMLPP_Storage::nginx_rule() ) . '</code></pre>';
+		$action = sprintf(
+			'<p><a href="%s">%s</a></p>',
+			esc_url( wp_nonce_url( add_query_arg( 'htmlpp_recheck', '1', self::settings_url( 'general' ) ), 'htmlpp_recheck' ) ),
+			esc_html__( 'Check again', 'html-page-publisher' )
+		);
+		$badge  = array(
+			'label' => __( 'Security', 'html-page-publisher' ),
+			'color' => 'blue',
+		);
+
+		if ( 'blocked' === $status ) {
+			return array(
+				'label'       => __( 'HTML Page Publisher’s page files are protected', 'html-page-publisher' ),
+				'status'      => 'good',
+				'badge'       => $badge,
+				'description' => '<p>' . esc_html__( 'Pages open only at their public URL. Requests straight to the plugin’s uploads folder are refused, so drafts stay private.', 'html-page-publisher' ) . '</p>',
+				'actions'     => '',
+				'test'        => 'htmlpp_storage_protection',
+			);
+		}
+
+		if ( 'open' === $status ) {
+			return array(
+				'label'       => __( 'HTML Page Publisher’s page files can be opened directly', 'html-page-publisher' ),
+				'status'      => 'recommended',
+				'badge'       => $badge,
+				'description' => '<p>' . esc_html__( 'Your web server doesn’t apply the .htaccess rules the plugin writes (usual on nginx, or Apache with AllowOverride None). Pages still work, but anyone who guesses a page’s folder can open its files directly, drafts included. On nginx, add this to your server block and reload:', 'html-page-publisher' ) . '</p>' . $rule,
+				'actions'     => $action,
+				'test'        => 'htmlpp_storage_protection',
+			);
+		}
+
+		return array(
+			'label'       => __( 'HTML Page Publisher couldn’t check its storage protection', 'html-page-publisher' ),
+			'status'      => 'recommended',
+			'badge'       => $badge,
+			'description' => '<p>' . esc_html__( 'The site couldn’t request its own uploads folder, so the plugin can’t tell whether page files are protected. On Apache and LiteSpeed its .htaccess rules apply by themselves. On nginx, add this to your server block:', 'html-page-publisher' ) . '</p>' . $rule,
+			'actions'     => $action,
+			'test'        => 'htmlpp_storage_protection',
+		);
+	}
+
 	/*
 	|--------------------------------------------------------------------------
 	| Assets and menus
@@ -728,6 +913,13 @@ class HTMLPP_Admin {
 			true
 		);
 
+		// The AI assistants tab opens MCP plugins' details in core's plugin modal.
+		$is_settings = false !== strpos( (string) $hook_suffix, self::PAGE_SLUG . '-settings' );
+		if ( $is_settings && current_user_can( 'install_plugins' ) ) {
+			add_thickbox();
+			wp_enqueue_script( 'plugin-install' );
+		}
+
 		wp_localize_script(
 			'htmlpp-admin',
 			'htmlppL10n',
@@ -738,8 +930,28 @@ class HTMLPP_Admin {
 				'total'         => __( '%s total', 'html-page-publisher' ),
 				'unsaved'       => __( 'You have unsaved changes to this page’s HTML.', 'html-page-publisher' ),
 				'noMatches'     => __( 'No pages match your search.', 'html-page-publisher' ),
+				'copied'        => __( 'Copied', 'html-page-publisher' ),
 			)
 		);
+
+		if ( $is_settings && 'ai' === $this->current_settings_tab() ) {
+			wp_localize_script(
+				'htmlpp-admin',
+				'htmlppConnect',
+				array(
+					'restUrl'  => rest_url( 'wp/v2/users/me/application-passwords' ),
+					'nonce'    => wp_create_nonce( 'wp_rest' ),
+					'username' => wp_get_current_user()->user_login,
+					/* translators: 1: AI app name, e.g. Claude Code, 2: date and time */
+					'appName'  => __( '%1$s (HTML Page Publisher, %2$s)', 'html-page-publisher' ),
+					'creating' => __( 'Creating…', 'html-page-publisher' ),
+					/* translators: %s: application password name */
+					'created'  => __( 'Created “%s”. It’s filled in below. WordPress won’t show this password again, so copy the setup text now.', 'html-page-publisher' ),
+					'pasted'   => __( 'Filled in below.', 'html-page-publisher' ),
+					'failed'   => __( 'WordPress couldn’t create a password:', 'html-page-publisher' ),
+				)
+			);
+		}
 
 		// On the editor screen, layer WordPress' built-in CodeMirror over
 		// the textarea. wp_enqueue_code_editor() loads its own assets and
@@ -858,8 +1070,10 @@ class HTMLPP_Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'html-page-publisher' ) );
 		}
 
+		$tab         = $this->current_settings_tab();
 		$protection  = HTMLPP_Storage::direct_access_status();
-		$recheck_url = wp_nonce_url( add_query_arg( 'htmlpp_recheck', '1', self::settings_url() ), 'htmlpp_recheck' );
+		$recheck_url = wp_nonce_url( add_query_arg( 'htmlpp_recheck', '1', self::settings_url( 'general' ) ), 'htmlpp_recheck' );
+		$ai          = HTMLPP_Abilities::status();
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-settings.php';
 	}

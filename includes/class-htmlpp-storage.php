@@ -334,6 +334,15 @@ class HTMLPP_Storage {
 	}
 
 	/**
+	 * The nginx rule that blocks direct access to the storage folders.
+	 *
+	 * @return string
+	 */
+	public static function nginx_rule() {
+		return 'location ~* ^' . wp_parse_url( self::base_url(), PHP_URL_PATH ) . "(-backups)?/ {\n\tdeny all;\n}";
+	}
+
+	/**
 	 * HTTP status observed for a URL (0 when the request failed).
 	 *
 	 * HTTPS loopback commonly fails on hosts with self-signed or SNI-bound

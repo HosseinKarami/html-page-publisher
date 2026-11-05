@@ -14,8 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $htmlpp_settings     = HTMLPP_Settings::get_settings();
 $htmlpp_example_url  = HTMLPP_Storage::public_page_url( 'your-slug' );
-$htmlpp_storage_path = ltrim( wp_make_link_relative( HTMLPP_Storage::base_url() ), '/' );
 $htmlpp_settings_url = admin_url( 'admin.php?page=html-page-publisher-settings' );
+$htmlpp_ai_url       = HTMLPP_Admin::settings_url( 'ai' );
+$htmlpp_ai           = HTMLPP_Abilities::status();
+$htmlpp_ai_state     = HTMLPP_Abilities::state( $htmlpp_ai );
 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only prefill after a failed upload; nothing is written.
 $htmlpp_prefill_slug = isset( $_GET['prefill_slug'] ) ? HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_GET['prefill_slug'] ) ) ) : '';
 $htmlpp_editing_off  = HTMLPP_Uploader::file_editing_disabled();
@@ -41,7 +43,7 @@ foreach ( $pages as $htmlpp_p ) {
 				<?php esc_html_e( 'HTML Page Publisher', 'html-page-publisher' ); ?>
 			</h1>
 			<p class="htmlpp-hero__subtitle">
-				<?php esc_html_e( 'Upload standalone HTML files — Claude Design exports or any static HTML — and publish them as landing pages at a clean URL.', 'html-page-publisher' ); ?>
+				<?php esc_html_e( 'Publish AI-made landing pages at a clean URL. Upload a file, or let Claude or ChatGPT publish it for you.', 'html-page-publisher' ); ?>
 			</p>
 		</div>
 		<div class="htmlpp-hero__actions">
@@ -101,34 +103,47 @@ foreach ( $pages as $htmlpp_p ) {
 			<p class="htmlpp-stat__label"><?php esc_html_e( 'URL Pattern', 'html-page-publisher' ); ?></p>
 			<p class="htmlpp-stat__value" style="font-size:15px;"><?php echo esc_html( $htmlpp_example_url ); ?></p>
 		</div>
-		<div class="htmlpp-stat">
-			<p class="htmlpp-stat__label"><?php esc_html_e( 'Storage Location', 'html-page-publisher' ); ?></p>
-			<p class="htmlpp-stat__hint" style="margin-top:6px;">/<?php echo esc_html( $htmlpp_storage_path ); ?>/</p>
-			<?php if ( 'blocked' === $htmlpp_protection ) : ?>
-				<p class="htmlpp-stat__hint"><?php esc_html_e( 'Direct access blocked (verified).', 'html-page-publisher' ); ?></p>
-			<?php elseif ( 'open' === $htmlpp_protection ) : ?>
-				<p class="htmlpp-stat__hint htmlpp-stat__hint--warning">
-					<?php
-					printf(
-						/* translators: %s: link to the Settings screen */
-						esc_html__( 'Direct access is open — see %s.', 'html-page-publisher' ),
-						'<a href="' . esc_url( $htmlpp_settings_url ) . '">' . esc_html__( 'Settings', 'html-page-publisher' ) . '</a>'
-					);
-					?>
-				</p>
-			<?php else : ?>
-				<p class="htmlpp-stat__hint">
-					<?php
-					printf(
-						/* translators: %s: link to the Settings screen */
-						esc_html__( 'Served at the public URL; check protection in %s.', 'html-page-publisher' ),
-						'<a href="' . esc_url( $htmlpp_settings_url ) . '">' . esc_html__( 'Settings', 'html-page-publisher' ) . '</a>'
-					);
-					?>
-				</p>
-			<?php endif; ?>
-		</div>
+		<a class="htmlpp-stat htmlpp-stat--link" href="<?php echo esc_url( $htmlpp_ai_url ); ?>">
+			<p class="htmlpp-stat__label"><?php esc_html_e( 'AI Assistants', 'html-page-publisher' ); ?></p>
+			<p class="htmlpp-stat__value htmlpp-stat__value--status">
+				<span class="htmlpp-dot htmlpp-dot--<?php echo esc_attr( $htmlpp_ai_state ); ?>" aria-hidden="true"></span>
+				<?php
+				$htmlpp_ai_labels = array(
+					'ready'       => __( 'Ready', 'html-page-publisher' ),
+					'setup'       => __( 'Not connected', 'html-page-publisher' ),
+					'off'         => __( 'Off', 'html-page-publisher' ),
+					'unsupported' => __( 'Needs WordPress 6.9', 'html-page-publisher' ),
+				);
+				echo esc_html( $htmlpp_ai_labels[ $htmlpp_ai_state ] );
+				?>
+			</p>
+			<p class="htmlpp-stat__hint htmlpp-stat__hint--text">
+				<?php
+				if ( 'ready' === $htmlpp_ai_state ) {
+					/* translators: %s: names of active MCP plugins */
+					echo esc_html( sprintf( __( 'Claude, ChatGPT and others can publish through %s.', 'html-page-publisher' ), implode( ', ', $htmlpp_ai['connectors'] ) ) );
+				} elseif ( 'setup' === $htmlpp_ai_state ) {
+					esc_html_e( 'Let Claude or ChatGPT publish for you. Set it up in a few steps.', 'html-page-publisher' );
+				} else {
+					esc_html_e( 'See how to connect Claude or ChatGPT.', 'html-page-publisher' );
+				}
+				?>
+				<span aria-hidden="true">→</span>
+			</p>
+		</a>
 	</div>
+
+	<?php if ( 'open' === $htmlpp_protection ) : ?>
+		<div class="htmlpp-alert htmlpp-alert--warning">
+			<div class="htmlpp-alert__body">
+				<p>
+					<strong><?php esc_html_e( 'Page files can be opened directly.', 'html-page-publisher' ); ?></strong>
+					<?php esc_html_e( 'Your web server doesn’t block direct requests to the plugin’s uploads folder, so drafts aren’t fully private.', 'html-page-publisher' ); ?>
+					<a href="<?php echo esc_url( HTMLPP_Admin::settings_url( 'general' ) ); ?>"><?php esc_html_e( 'How to fix it', 'html-page-publisher' ); ?></a>
+				</p>
+			</div>
+		</div>
+	<?php endif; ?>
 
 	<?php if ( $notice ) : ?>
 		<?php $htmlpp_class = 'success' === $notice['type'] ? 'htmlpp-notice--success' : 'htmlpp-notice--error'; ?>
@@ -280,6 +295,26 @@ foreach ( $pages as $htmlpp_p ) {
 					</div>
 				</form>
 			</div>
+
+			<?php if ( in_array( $htmlpp_ai_state, array( 'ready', 'setup' ), true ) ) : ?>
+				<div class="htmlpp-ai-callout">
+					<span class="htmlpp-ai-callout__icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/>
+							<path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z"/>
+						</svg>
+					</span>
+					<p>
+						<?php if ( 'ready' === $htmlpp_ai_state ) : ?>
+							<?php esc_html_e( 'Your AI assistant can publish here too. Ask it to “publish this page on my site”.', 'html-page-publisher' ); ?>
+							<a href="<?php echo esc_url( $htmlpp_ai_url ); ?>"><?php esc_html_e( 'Connection steps', 'html-page-publisher' ); ?></a>
+						<?php else : ?>
+							<?php esc_html_e( 'Made the page with Claude or ChatGPT? Let it publish here for you.', 'html-page-publisher' ); ?>
+							<a href="<?php echo esc_url( $htmlpp_ai_url ); ?>"><?php esc_html_e( 'Set up AI assistants', 'html-page-publisher' ); ?></a>
+						<?php endif; ?>
+					</p>
+				</div>
+			<?php endif; ?>
 		</div>
 
 		<div class="htmlpp-card">
@@ -311,17 +346,25 @@ foreach ( $pages as $htmlpp_p ) {
 							</svg>
 						</div>
 						<p class="htmlpp-empty__title"><?php esc_html_e( 'No pages yet', 'html-page-publisher' ); ?></p>
-						<p class="htmlpp-empty__body"><?php esc_html_e( 'Use the Upload New Page form to publish your first page.', 'html-page-publisher' ); ?></p>
+						<p class="htmlpp-empty__body">
+							<?php
+							if ( 'ready' === $htmlpp_ai_state ) {
+								esc_html_e( 'Upload your first page with the form, or ask your AI assistant to publish one.', 'html-page-publisher' );
+							} else {
+								esc_html_e( 'Use the Upload New Page form to publish your first page.', 'html-page-publisher' );
+							}
+							?>
+						</p>
 					</div>
 				<?php else : ?>
-					<div class="htmlpp-table-scroll">
-					<table class="htmlpp-table">
+					<div class="htmlpp-table-scroll htmlpp-table-scroll--pages">
+					<table class="htmlpp-table htmlpp-table--pages">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Page', 'html-page-publisher' ); ?></th>
-								<th style="width:90px;"><?php esc_html_e( 'Files', 'html-page-publisher' ); ?></th>
-								<th style="width:160px;"><?php esc_html_e( 'Modified', 'html-page-publisher' ); ?></th>
-								<th style="width:170px;"></th>
+								<th><?php esc_html_e( 'Files', 'html-page-publisher' ); ?></th>
+								<th><?php esc_html_e( 'Modified', 'html-page-publisher' ); ?></th>
+								<th><span class="screen-reader-text"><?php esc_html_e( 'Actions', 'html-page-publisher' ); ?></span></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -369,23 +412,23 @@ foreach ( $pages as $htmlpp_p ) {
 									<td><?php echo esc_html( wp_date( 'M j, Y g:ia', $htmlpp_page['modified'] ) ); ?></td>
 									<td>
 										<div class="htmlpp-row-actions">
-											<a href="<?php echo esc_url( admin_url( 'admin.php?page=html-page-publisher&action=edit&slug=' . rawurlencode( $htmlpp_page['slug'] ) ) ); ?>" class="htmlpp-edit-btn">
+											<a href="<?php echo esc_url( admin_url( 'admin.php?page=html-page-publisher&action=edit&slug=' . rawurlencode( $htmlpp_page['slug'] ) ) ); ?>" class="htmlpp-edit-btn" aria-label="<?php /* translators: %s: page slug */ echo esc_attr( sprintf( __( 'Edit %s', 'html-page-publisher' ), $htmlpp_page['slug'] ) ); ?>">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
 													<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/>
 												</svg>
-												<?php esc_html_e( 'Edit', 'html-page-publisher' ); ?>
+												<span class="htmlpp-btn-label"><?php esc_html_e( 'Edit', 'html-page-publisher' ); ?></span>
 											</a>
 											<form method="post" style="display:inline" onsubmit="return confirm('<?php echo esc_js( sprintf( /* translators: %s: page slug */ __( 'Delete "%s"? This cannot be undone.', 'html-page-publisher' ), $htmlpp_page['slug'] ) ); ?>')">
 												<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
 												<input type="hidden" name="htmlpp_delete" value="<?php echo esc_attr( $htmlpp_page['slug'] ); ?>" />
-												<button type="submit" class="htmlpp-delete-btn">
+												<button type="submit" class="htmlpp-delete-btn" aria-label="<?php /* translators: %s: page slug */ echo esc_attr( sprintf( __( 'Delete %s', 'html-page-publisher' ), $htmlpp_page['slug'] ) ); ?>">
 													<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 														<polyline points="3 6 5 6 21 6"/>
 														<path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
 														<path d="M10 11v6M14 11v6"/>
 													</svg>
-													<?php esc_html_e( 'Delete', 'html-page-publisher' ); ?>
+													<span class="htmlpp-btn-label"><?php esc_html_e( 'Delete', 'html-page-publisher' ); ?></span>
 												</button>
 											</form>
 										</div>

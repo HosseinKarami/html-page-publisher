@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       HTML Page Publisher
+ * Plugin Name:       HTML Page Publisher – Publish AI Landing Pages from Claude Design & ChatGPT
  * Plugin URI:        https://github.com/HosseinKarami/html-page-publisher
- * Description:       Publish standalone HTML files — Claude Design exports or any static HTML — as landing pages at a clean URL. Edit in place, manage images, keep version history. Optional subdomain routing.
- * Version:           1.5.3
+ * Description:       Publish standalone HTML files — Claude Design exports or any static HTML — as landing pages at a clean URL. Edit in place, keep version history, and let AI assistants publish for you.
+ * Version:           1.6.0
  * Requires at least: 5.9
  * Requires PHP:      7.4
  * Author:            Hossein Karami
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HTMLPP_VERSION', '1.5.3' );
+define( 'HTMLPP_VERSION', '1.6.0' );
 define( 'HTMLPP_PLUGIN_FILE', __FILE__ );
 define( 'HTMLPP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HTMLPP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -36,6 +36,7 @@ require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-sanitizer.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-uploader.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-page-service.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-rest.php';
+require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-abilities.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-renderer.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-admin.php';
 require_once HTMLPP_PLUGIN_DIR . 'includes/class-htmlpp-plugin.php';

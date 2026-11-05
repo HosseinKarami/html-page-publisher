@@ -1,15 +1,15 @@
-=== HTML Page Publisher ===
+=== HTML Page Publisher – Publish AI Landing Pages from Claude Design & ChatGPT ===
 Contributors: hosseinkarami
 Donate link: https://buymeacoffee.com/hosseinkarami?utm_source=wordpress.org&utm_medium=plugin-page&utm_campaign=donate&utm_content=readme-donate
-Tags: html, landing page, claude design, ai, static html
+Tags: landing page, claude design, ai, mcp, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.3
+Stable tag: 1.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Publish standalone HTML files — Claude Design exports or any static HTML page — as landing pages at a clean URL on your own WordPress site.
+Publish standalone HTML pages, such as Claude Design exports, at a clean URL on your site. Or let Claude or ChatGPT publish them for you.
 
 == Description ==
 
@@ -17,9 +17,12 @@ HTML Page Publisher lets you drop a standalone HTML file into WordPress and have
 
 It is built for the "I made this page with an AI tool, now how do I get it onto my site?" moment. It includes purpose-built cleanup for **Claude Design** exports, and works with any self-contained HTML page — from ChatGPT, Gemini, or written by hand. (Tools that export React or Vite projects, such as v0 and Bolt, first need to be built or exported to static HTML.)
 
+Your AI assistant can also do the publishing. On WordPress 6.9 or later, with an MCP plugin such as the official MCP Adapter, ask Claude or ChatGPT to "publish this page on my site at /spring-promo/" and it does, then changes the headline when you ask, and can undo its changes from the page's history.
+
 **Key features**
 
 * **Upload and publish**: one HTML file plus its images — or a whole ZIP bundle (index.html + css/js/images/fonts) — and you get a public URL
+* **AI assistants can publish for you** (WordPress 6.9+): through an MCP plugin, Claude, ChatGPT, Cursor and other assistants can publish, edit and unpublish pages, add images, and restore earlier versions. They are never offered a way to delete anything
 * **Drafts and previews**: save a page as a draft, share a preview link that works without logging in, publish when ready
 * **Custom paths and front page**: serve a page at `/promo/` instead of `/pages/promo/`, or make it the site's front page
 * **Global snippets**: add GA4/GTM/pixel, fonts or a consent banner to every page from Settings (pages can opt out)
@@ -82,11 +85,26 @@ A form that posts to an outside service (Formspree, HubSpot, Mailchimp and the l
 
 Published pages that are not marked noindex are listed at `/wp-sitemap-htmlpp-1.xml`, which is linked from WordPress's built-in sitemap index. SEO plugins such as Yoast or Rank Math replace the core sitemap with their own; in that case use the `htmlpp_sitemap_entries` filter (or `HTMLPP_Sitemap::entries()`) to feed their sitemap.
 
+= Can Claude or ChatGPT publish pages to my site for me? =
+
+Yes, on WordPress 6.9 or later:
+
+1. Open **HTML Pages → Settings → AI assistants** and pick your app: Claude Code, Claude Desktop, Cursor, Claude on the web, or ChatGPT.
+2. Follow the steps it shows. For desktop and coding apps it installs the official [MCP Adapter](https://wordpress.org/plugins/mcp-adapter/), creates an application password and gives you the exact command or config to paste. Claude on the web and ChatGPT need a site on the internet and an MCP plugin with sign-in, such as Easy MCP AI or WPVibe.
+3. Ask your assistant, for example: "Publish this landing page on my WordPress site at /spring-promo/, as a draft first."
+
+
+The assistant can list your pages, read a page's HTML, publish new pages (as drafts with a preview link if you ask), change part of a page or replace it, publish or unpublish it, set a custom path or noindex, rename or duplicate it, add images and other files, and restore an earlier version. It can't delete pages or files, and every change to a page's HTML keeps the previous version in its history.
+
+These tools are WordPress abilities named `html-page-publisher/…`. To turn them off, use the switch at the bottom of the AI assistants tab, or `add_filter( 'htmlpp_register_abilities', '__return_false' );`. To keep one away from assistants while PHP code can still use it, return false from the `htmlpp_abilities_public` filter for its name.
+
 = Can I publish from a script, CI, or Claude Code? =
 
 Yes. The plugin exposes a REST API at `/wp-json/htmlpp/v1` (list, create/replace from an HTML file or ZIP, update HTML or settings, rename, duplicate, files, versions, preview links). Authenticate with an application password (Users → Profile → Application Passwords) for an administrator:
 
 `curl -u "admin:xxxx xxxx xxxx xxxx" -F slug=spring-promo -F file=@index.html https://example.com/wp-json/htmlpp/v1/pages`
+
+To change part of a page without resending it, send find-and-replace pairs: `PUT /wp-json/htmlpp/v1/pages/spring-promo` with JSON `{"edits":[{"find":"Old headline","replace":"New headline"}]}`. Each `find` must appear exactly once, and if one does not match, nothing is changed.
 
 With shell access, `wp htmlpp publish spring-promo ./site.zip --overwrite` does the same. The [GitHub repository](https://github.com/HosseinKarami/html-page-publisher) ships a Claude Code skill (`skills/publish-to-wordpress`) so Claude can publish a page it just generated.
 
@@ -161,10 +179,21 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 1. Upload a new page or ZIP bundle and see everything you have published, with each page's title, status and public URL.
 2. Edit a published page in the dashboard with the native WordPress code editor.
 3. Files &amp; Assets: every file of an imported bundle — images, CSS, JS, fonts — with replace and delete in place.
-4. Settings: URL prefix, optional subdomain, global snippets, and a live check that storage protection is active.
+4. Settings: page URLs, tracking code and SEO, and step-by-step setup for AI assistants.
 5. Page settings: draft/published, custom path or front page, noindex, rename and duplicate.
 
 == Changelog ==
+
+= 1.6.0 =
+* New: AI assistants can publish and edit your pages. On WordPress 6.9 or later the plugin registers its page actions as WordPress abilities: list, get, publish, update, duplicate, list versions, restore a version, and add a file. MCP plugins such as the official MCP Adapter offer them to Claude, ChatGPT, Cursor and other assistants. Deleting is never offered, and every change to a page's HTML keeps the previous version.
+* New: Change part of a page with exact find-and-replace pairs (`edits`) instead of resending all of its HTML. Available to assistants, in the REST API (`PUT /pages/{slug}`) and as `htmlpp()->pages->edit_html()`. All pairs apply, or none do.
+* New: HTML Pages → Settings → AI assistants walks you through connecting Claude Code, Claude Desktop, Cursor, Claude or ChatGPT. It checks what's missing, creates an application password, and fills in the command or config for your app.
+* New: A switch to stop offering the page tools to AI assistants, and the filters `htmlpp_register_abilities` and `htmlpp_abilities_public`.
+* New: The pages screen shows whether an AI assistant can publish, with a link to set one up.
+* Improved: Settings are split into General, Tracking & SEO and AI assistants tabs, with a cleaner layout. Saving one tab never changes another.
+* Improved: The storage protection check moved to Tools → Site Health. Settings now shows it in full only when something needs fixing.
+* Fixed: In the pages list, a long slug, title or URL made the table wider than its card, so you had to scroll sideways to reach Edit and Delete. Long text now shortens with an ellipsis, and the Files and Modified columns step aside when the card is narrow.
+* Improved: The Edit and Delete buttons in the pages list say which page they act on, for screen reader users.
 
 = 1.5.3 =
 * Fixed: The plugin's screens were slightly wider than the browser window (20px on desktop, 10px on phones), so the right edge was cut off and the page could scroll sideways.
@@ -256,6 +285,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.6.0 =
+Claude, ChatGPT and other AI assistants can now publish and edit your pages through an MCP plugin (WordPress 6.9+). Also fixes Edit and Delete being pushed out of view in the pages list by long URLs.
 
 = 1.5.3 =
 Fixes the plugin's screens being slightly wider than the browser window, which cut off their right edge, most noticeably on phones.

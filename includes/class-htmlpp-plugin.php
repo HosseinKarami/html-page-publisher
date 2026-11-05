@@ -54,6 +54,13 @@ final class HTMLPP_Plugin {
 	public $rest;
 
 	/**
+	 * Abilities API integration (WordPress 6.9+ only).
+	 *
+	 * @var HTMLPP_Abilities|null
+	 */
+	public $abilities = null;
+
+	/**
 	 * Settings instance (admin only).
 	 *
 	 * @var HTMLPP_Settings|null
@@ -106,6 +113,11 @@ final class HTMLPP_Plugin {
 		$this->renderer = new HTMLPP_Renderer();
 		$this->rest     = new HTMLPP_REST();
 		new HTMLPP_Sitemap();
+
+		// Lets AI assistants publish and edit pages (WordPress 6.9+).
+		if ( HTMLPP_Abilities::supported() ) {
+			$this->abilities = new HTMLPP_Abilities();
+		}
 
 		if ( is_admin() ) {
 			$this->settings = new HTMLPP_Settings();
