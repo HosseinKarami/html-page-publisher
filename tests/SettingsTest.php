@@ -104,6 +104,7 @@ class SettingsTest extends TestCase {
 			'footer_snippet' => 'y',
 			'canonical'      => true,
 			'ai_enabled'     => false,
+			'file_delivery'  => 'uploads',
 		);
 		$this->assertSame( $full, $this->settings->sanitize( $full ) );
 	}

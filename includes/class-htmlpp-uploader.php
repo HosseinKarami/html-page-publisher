@@ -56,6 +56,16 @@ class HTMLPP_Uploader {
 	}
 
 	/**
+	 * File types that can run script when opened from the site, so adding
+	 * them needs permission to write page markup.
+	 *
+	 * @return string[]
+	 */
+	public static function markup_extensions() {
+		return array( 'html', 'htm', 'xml', 'svg', 'js', 'mjs' );
+	}
+
+	/**
 	 * Comma-separated accept="" list for file inputs.
 	 *
 	 * @return string
@@ -135,19 +145,22 @@ class HTMLPP_Uploader {
 
 		// Branches that write raw page markup need the unfiltered_html trust
 		// level; managing existing pages (delete, settings, preview) does not.
-		$writes_markup = array( 'htmlpp_upload', 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_duplicate' );
+		$writes_markup = array( 'htmlpp_upload', 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_duplicate', 'htmlpp_fix_ref' );
 
 		$handlers = array(
-			'htmlpp_delete'        => 'handle_delete',
-			'htmlpp_upload'        => 'handle_upload',
-			'htmlpp_edit'          => 'handle_edit',
-			'htmlpp_restore'       => 'handle_restore',
-			'htmlpp_asset_upload'  => 'handle_asset_upload',
-			'htmlpp_asset_replace' => 'handle_asset_replace',
-			'htmlpp_asset_delete'  => 'handle_asset_delete',
-			'htmlpp_page_settings' => 'handle_page_settings',
-			'htmlpp_duplicate'     => 'handle_duplicate',
-			'htmlpp_reset_preview' => 'handle_reset_preview',
+			'htmlpp_delete'         => 'handle_delete',
+			'htmlpp_upload'         => 'handle_upload',
+			'htmlpp_edit'           => 'handle_edit',
+			'htmlpp_restore'        => 'handle_restore',
+			'htmlpp_asset_upload'   => 'handle_asset_upload',
+			'htmlpp_asset_replace'  => 'handle_asset_replace',
+			'htmlpp_asset_delete'   => 'handle_asset_delete',
+			'htmlpp_page_settings'  => 'handle_page_settings',
+			'htmlpp_page_seo'       => 'handle_page_seo',
+			'htmlpp_missing_upload' => 'handle_missing_upload',
+			'htmlpp_fix_ref'        => 'handle_fix_reference',
+			'htmlpp_duplicate'      => 'handle_duplicate',
+			'htmlpp_reset_preview'  => 'handle_reset_preview',
 		);
 
 		foreach ( $handlers as $key => $method ) {
@@ -367,6 +380,104 @@ class HTMLPP_Uploader {
 			'type'    => 'success',
 			'message' => implode( ' ', $messages ),
 			'slug'    => $slug,
+		);
+	}
+
+	/**
+	 * Save a page's link preview fields (title, description, image).
+	 *
+	 * @return array
+	 */
+	private static function handle_page_seo() {
+		check_admin_referer( 'htmlpp_action', 'htmlpp_nonce' );
+
+		$slug = self::post_slug( 'htmlpp_page_seo' );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified above.
+		$fields = array(
+			'seo_title'       => isset( $_POST['htmlpp_seo_title'] ) ? sanitize_text_field( wp_unslash( $_POST['htmlpp_seo_title'] ) ) : '',
+			'seo_description' => isset( $_POST['htmlpp_seo_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['htmlpp_seo_description'] ) ) : '',
+			'seo_image'       => isset( $_POST['htmlpp_seo_image'] ) ? sanitize_text_field( wp_unslash( $_POST['htmlpp_seo_image'] ) ) : '',
+		);
+		// phpcs:enable
+
+		$result = self::service()->set_meta( $slug, $fields );
+		if ( is_wp_error( $result ) ) {
+			return self::error_notice( $result );
+		}
+		return array(
+			'type'    => 'success',
+			'message' => __( 'Link preview saved. Apps that already showed this link may keep their old preview for a while.', 'html-page-publisher' ),
+		);
+	}
+
+	/**
+	 * Upload a file the page refers to, stored at exactly that path.
+	 *
+	 * @return array
+	 */
+	private static function handle_missing_upload() {
+		check_admin_referer( 'htmlpp_action', 'htmlpp_nonce' );
+
+		$slug = self::post_slug( 'htmlpp_missing_upload' );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified above.
+		$reference = isset( $_POST['htmlpp_missing_ref'] ) ? sanitize_text_field( wp_unslash( $_POST['htmlpp_missing_ref'] ) ) : '';
+		if ( ! isset( $_FILES['htmlpp_missing_file']['name'] ) || '' === $_FILES['htmlpp_missing_file']['name'] ) {
+			return array(
+				'type'    => 'error',
+				'message' => __( 'Please choose a file to upload.', 'html-page-publisher' ),
+			);
+		}
+		$single = self::normalize_file( $_FILES['htmlpp_missing_file'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized field-by-field in normalize_file().
+		// phpcs:enable
+
+		$error = self::upload_error_message( $single['error'] );
+		if ( '' !== $error ) {
+			return array(
+				'type'    => 'error',
+				'message' => $error,
+			);
+		}
+
+		$stored = self::service()->store_file_at( $slug, $single, $reference, 'upload' );
+		if ( is_wp_error( $stored ) ) {
+			return self::error_notice( $stored );
+		}
+		return array(
+			'type'    => 'success',
+			'message' => sprintf(
+				/* translators: %s: file path, e.g. images/hero.png */
+				__( 'Uploaded %s. The page now finds it.', 'html-page-publisher' ),
+				$stored
+			),
+		);
+	}
+
+	/**
+	 * Point a missing reference at a file that is in the page's folder.
+	 *
+	 * @return array
+	 */
+	private static function handle_fix_reference() {
+		check_admin_referer( 'htmlpp_action', 'htmlpp_nonce' );
+
+		$slug = self::post_slug( 'htmlpp_fix_ref' );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Verified above.
+		$from = isset( $_POST['htmlpp_ref'] ) ? sanitize_text_field( wp_unslash( $_POST['htmlpp_ref'] ) ) : '';
+		$to   = isset( $_POST['htmlpp_ref_to'] ) ? sanitize_text_field( wp_unslash( $_POST['htmlpp_ref_to'] ) ) : '';
+		// phpcs:enable
+
+		$result = self::service()->fix_reference( $slug, $from, $to );
+		if ( is_wp_error( $result ) ) {
+			return self::error_notice( $result );
+		}
+		return array(
+			'type'    => 'success',
+			'message' => sprintf(
+				/* translators: 1: old file path, 2: new file path */
+				__( 'The page now uses %2$s instead of %1$s. The previous version was saved to the page’s history.', 'html-page-publisher' ),
+				$from,
+				$to
+			),
 		);
 	}
 
@@ -662,12 +773,36 @@ class HTMLPP_Uploader {
 			) . ' ' . implode( ' ', $page['file_errors'] );
 		}
 
+		// Files the page refers to but nobody uploaded: send the user to the
+		// edit screen, which lists them with a way to add each one.
+		$missing = self::service()->missing_files( $page['slug'] );
+		$missing = is_wp_error( $missing ) ? array() : $missing;
+		if ( ! empty( $missing ) ) {
+			$problems[] = sprintf(
+				/* translators: %d: number of missing files */
+				_n(
+					'%d file the page uses isn’t uploaded yet, so it will show as missing. It’s listed below with a way to add it.',
+					'%d files the page uses aren’t uploaded yet, so they will show as missing. They’re listed below with a way to add each one.',
+					count( $missing ),
+					'html-page-publisher'
+				),
+				count( $missing )
+			);
+		}
+
+		$type = 'success';
+		if ( ! empty( $page['file_errors'] ) ) {
+			$type = 'error'; // Skipped ZIP entries are informational; failed uploads are errors.
+		} elseif ( ! empty( $missing ) ) {
+			$type = 'warning';
+		}
+
 		return array(
-			// Skipped ZIP entries are informational; failed uploads are errors.
-			'type'     => empty( $page['file_errors'] ) ? 'success' : 'error',
+			'type'     => $type,
 			'message'  => $message . ( $problems ? ' ' . esc_html( implode( ' ', $problems ) ) : '' ),
 			'raw_html' => true,
 			'slug'     => $page['slug'],
+			'missing'  => count( $missing ),
 		);
 	}
 
@@ -826,12 +961,17 @@ class HTMLPP_Uploader {
 			return array( 'error' => __( 'Sorry, this file type is not allowed.', 'html-page-publisher' ) );
 		}
 
+		// HTML, XML, SVG and JavaScript run in visitors' browsers on the
+		// site's own address, so adding them needs the same trust as
+		// writing page HTML (on multisite, site admins lack unfiltered_html).
+		// REST and abilities check this up front; WP-CLI is trusted.
+		if ( in_array( $ext, self::markup_extensions(), true ) && did_action( 'admin_init' ) && ! HTMLPP_Plugin::can_write_markup() ) {
+			return array( 'error' => HTMLPP_Plugin::markup_denied_message() );
+		}
+
 		// SVG is markup, not a picture: it is sanitized, then stored. Every
 		// entry point (admin, REST, WP-CLI, replace-in-place) arrives here.
 		if ( 'svg' === $ext ) {
-			if ( did_action( 'admin_init' ) && ! HTMLPP_Plugin::can_write_markup() ) {
-				return array( 'error' => HTMLPP_Plugin::markup_denied_message() );
-			}
 			// The file array already has an 'error' key (PHP's upload error
 			// code), so a failure is signalled by a string, not by that key.
 			$sanitized = self::sanitize_svg_file( $single );

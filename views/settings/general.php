@@ -12,11 +12,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$htmlpp_status = isset( $protection['status'] ) ? $protection['status'] : 'unknown';
-$htmlpp_code   = isset( $protection['code'] ) ? (int) $protection['code'] : 0;
+$htmlpp_status  = isset( $protection['status'] ) ? $protection['status'] : 'unknown';
+$htmlpp_code    = isset( $protection['code'] ) ? (int) $protection['code'] : 0;
+$htmlpp_uploads = HTMLPP_Delivery::UPLOADS === HTMLPP_Delivery::mode();
 ?>
 
-<?php if ( 'blocked' !== $htmlpp_status ) : ?>
+<?php if ( 'open' === $htmlpp_status && $htmlpp_uploads ) : ?>
+	<div class="htmlpp-statusline">
+		<span class="htmlpp-statusline__icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="10"/>
+				<line x1="12" y1="16" x2="12" y2="12"/>
+				<line x1="12" y1="8" x2="12.01" y2="8"/>
+			</svg>
+		</span>
+		<p>
+			<strong><?php esc_html_e( 'Pages load their files from the uploads folder.', 'html-page-publisher' ); ?></strong>
+			<?php esc_html_e( 'This host answers requests for CSS, JavaScript and image files itself, so keep the plugin’s uploads folder reachable. Anyone who guesses a page’s folder can open its files, drafts included.', 'html-page-publisher' ); ?>
+		</p>
+		<a href="<?php echo esc_url( $recheck_url ); ?>"><?php esc_html_e( 'Check again', 'html-page-publisher' ); ?></a>
+	</div>
+<?php elseif ( 'blocked' !== $htmlpp_status ) : ?>
 	<div class="htmlpp-alert htmlpp-alert--<?php echo 'open' === $htmlpp_status ? 'warning' : 'info'; ?>">
 		<span class="htmlpp-alert__icon" aria-hidden="true">
 			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

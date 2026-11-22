@@ -55,6 +55,7 @@ class HTMLPP_Settings {
 			'footer_snippet' => '',
 			'canonical'      => true,
 			'ai_enabled'     => true,
+			'file_delivery'  => 'auto',
 		);
 		$saved    = get_option( self::OPTION, array() );
 		return wp_parse_args( (array) $saved, $defaults );
@@ -107,6 +108,17 @@ class HTMLPP_Settings {
 			array( 'label_for' => 'htmlpp-subdomain' )
 		);
 
+		add_settings_section( 'htmlpp_files_section', __( 'Page files', 'html-page-publisher' ), null, self::PAGE_GENERAL );
+
+		add_settings_field(
+			'file_delivery',
+			__( 'Load CSS, JS and images', 'html-page-publisher' ),
+			array( $this, 'field_file_delivery' ),
+			self::PAGE_GENERAL,
+			'htmlpp_files_section',
+			array( 'label_for' => 'htmlpp-file_delivery' )
+		);
+
 		add_settings_section( 'htmlpp_snippets_section', __( 'Code on every page', 'html-page-publisher' ), null, self::PAGE_TRACKING );
 
 		add_settings_field(
@@ -148,6 +160,8 @@ class HTMLPP_Settings {
 		switch ( $id ) {
 			case 'htmlpp_url_section':
 				return __( 'Where your pages are served on this site.', 'html-page-publisher' );
+			case 'htmlpp_files_section':
+				return __( 'How a page’s own files reach visitors’ browsers.', 'html-page-publisher' );
 			case 'htmlpp_snippets_section':
 				return __( 'Analytics (GA4, GTM, Meta Pixel), fonts, a consent banner or a chat widget, added to every published page. A page can opt out in its own settings.', 'html-page-publisher' );
 			case 'htmlpp_seo_section':
@@ -300,6 +314,11 @@ class HTMLPP_Settings {
 			}
 		}
 
+		if ( array_key_exists( 'file_delivery', $input ) ) {
+			$choice               = sanitize_key( (string) $input['file_delivery'] );
+			$out['file_delivery'] = in_array( $choice, array( HTMLPP_Delivery::AUTO, HTMLPP_Delivery::PAGE_URL, HTMLPP_Delivery::UPLOADS ), true ) ? $choice : HTMLPP_Delivery::AUTO;
+		}
+
 		if ( array_key_exists( 'url_prefix', $input ) ) {
 			$prefix = sanitize_title( $input['url_prefix'] );
 			if ( '' === $prefix ) {
@@ -341,6 +360,53 @@ class HTMLPP_Settings {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Render the file-delivery field, with what the automatic check found.
+	 */
+	public function field_file_delivery() {
+		$choice  = HTMLPP_Delivery::choice();
+		$record  = HTMLPP_Delivery::status();
+		$options = array(
+			HTMLPP_Delivery::AUTO     => __( 'Automatically (recommended)', 'html-page-publisher' ),
+			HTMLPP_Delivery::PAGE_URL => __( 'At the page’s URL, through WordPress', 'html-page-publisher' ),
+			HTMLPP_Delivery::UPLOADS  => __( 'Straight from the uploads folder', 'html-page-publisher' ),
+		);
+		?>
+		<select id="htmlpp-file_delivery" name="<?php echo esc_attr( self::OPTION ); ?>[file_delivery]">
+			<?php foreach ( $options as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $choice, $value ); ?>><?php echo esc_html( $label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php echo esc_html( self::file_delivery_status_text( $record ) ); ?></p>
+		<p class="description"><?php esc_html_e( 'Some hosts, WordPress.com among them, answer requests for CSS, JavaScript and image files themselves, so they never reach WordPress and pages show unstyled or blank. On those hosts pages load their files straight from the uploads folder instead. Nothing is changed in your HTML.', 'html-page-publisher' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * One sentence describing what the automatic file check found.
+	 *
+	 * @param array $record HTMLPP_Delivery::status().
+	 * @return string
+	 */
+	public static function file_delivery_status_text( array $record ) {
+		$status  = isset( $record['status'] ) ? (string) $record['status'] : '';
+		$storage = isset( $record['storage'] ) ? (string) $record['storage'] : '';
+
+		if ( '' === $status ) {
+			return __( 'Not checked yet. The check runs in the background, or use “Check again”.', 'html-page-publisher' );
+		}
+		if ( 'normal' === $status ) {
+			return __( 'Checked: page files reach WordPress normally, so they load at the page’s URL.', 'html-page-publisher' );
+		}
+		if ( 'intercepted' === $status && 'open' === $storage ) {
+			return __( 'Checked: this host answers file requests itself, so Automatically loads them from the uploads folder.', 'html-page-publisher' );
+		}
+		if ( 'intercepted' === $status ) {
+			return __( 'Checked: this host answers file requests itself, but its uploads folder is blocked too, so pages can’t load their files. Allow access to the plugin’s uploads folder, then check again.', 'html-page-publisher' );
+		}
+		return __( 'The automatic check couldn’t tell (this site couldn’t reach itself), so files load at the page’s URL. If pages show without their styles or images, choose “Straight from the uploads folder”.', 'html-page-publisher' );
 	}
 
 	/**

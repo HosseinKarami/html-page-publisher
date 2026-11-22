@@ -16,6 +16,8 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 - **Custom paths / front page**: serve a page at `/promo/` or as the site's homepage
 - **Global snippets**: GA4/GTM/pixels/fonts injected at serve time on every page, per-page opt-out
 - **SEO**: core XML sitemap provider, per-page noindex, canonical link; **rename** (301 from the old slug) and **duplicate** (as draft)
+- **Link previews**: per-page title, description and image for search results and shared links (og/twitter tags), applied at serve time so the HTML file is untouched; pages without preview tags get them from their own `<title>` and description
+- **Missing-files check**: lists the files a page (or its stylesheets) refers to that aren't in its folder, uploads each to the exact path the page expects, or repoints a reference at a file that's already there; AI assistants, REST and WP-CLI get the same list
 - **REST API + WP-CLI**: `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`; a Claude Code skill (`skills/publish-to-wordpress`) lets Claude publish what it just built
 - **Built-in HTML editor**: edit published pages in the dashboard with the native WordPress code editor (large/minified files fall back to a plain editor automatically)
 - **Version history**: every save snapshots the previous version; restore any earlier version with one click (restoring is itself undoable; retention filterable via `htmlpp_max_backups`)
@@ -23,6 +25,7 @@ A WordPress plugin for rapidly publishing static HTML landing pages without embe
 - **Clean Claude Design exports**: strips the export-time runtime wrappers Claude Design adds; rules are named and filterable (`htmlpp_sanitizer_rules`)
 - Configurable URL prefix (default `/pages/your-slug/`), optional subdomain routing (`sales.example.com/your-slug/`), subdirectory installs supported
 - **Cache-friendly**: `ETag` / `Last-Modified`, conditional `304`, `HEAD`; canonical trailing-slash redirect
+- **Works on WordPress.com**: on hosts whose web server answers CSS/JS/image requests itself, the plugin detects it and has pages load their files from the uploads folder (Apple Keynote exports included); every other host is unaffected
 - **Protected storage**: pages are only reachable at their public URL — the uploads and version-history folders deny direct access, and Settings shows whether your server honours it (with an nginx snippet if not)
 - Nonce-protected forms, capability checks, path-traversal guards, strict extension filtering, no silent overwrites; editing respects `DISALLOW_FILE_EDIT` / `DISALLOW_FILE_MODS`
 - Actions and filters for add-ons (see below)
@@ -60,9 +63,9 @@ Base: `https://example.com/wp-json/htmlpp/v1` — authenticate with an [applicat
 | Method | Route | Body |
 | --- | --- | --- |
 | `GET` | `/pages` | — |
-| `POST` | `/pages` | multipart `slug`, `file` (.html/.zip), `files[]`, `status`, `overwrite` — or JSON `{slug, html, status, overwrite}` |
+| `POST` | `/pages` | multipart `slug`, `file` (.html/.zip), `files[]`, `status`, `overwrite` — or JSON `{slug, html, status, overwrite}`; both also take `seo_title`, `seo_description`, `seo_image` |
 | `GET` | `/pages/{slug}?html=1` | — |
-| `PUT` | `/pages/{slug}` | JSON any of `html` or `edits`, `status`, `path`, `noindex`, `no_snippets`, `new_slug` |
+| `PUT` | `/pages/{slug}` | JSON any of `html` or `edits`, `status`, `path`, `noindex`, `no_snippets`, `seo_title`, `seo_description`, `seo_image`, `new_slug` |
 | `DELETE` | `/pages/{slug}` | — |
 | `POST` | `/pages/{slug}/duplicate` | `{new_slug}` |
 | `GET` / `DELETE` | `/pages/{slug}/preview-link` | get / reset the draft preview link |
@@ -82,6 +85,13 @@ returns `409 htmlpp_exists`; validation errors return `400`/`409` with a `code`
 (`htmlpp_bad_path`, `htmlpp_path_taken`, …) in the standard WP REST error shape.
 `files[]` can only be sent as multipart, not JSON.
 
+`POST` and `PUT` responses include `missing_files`: the files the page or its
+stylesheets refer to that aren't in its folder, each as `{reference, raw,
+found_in, suggestion}` (`suggestion` names an existing file it probably meant).
+`seo_image` is one of the page's image files by reference
+(`assets/share.png`) or a full `https://` URL; anything else returns
+`400 htmlpp_bad_image`.
+
 `edits` changes part of a page without resending it: a list of exact
 find-and-replace pairs, `{"edits":[{"find":"Old headline","replace":"New headline"}]}`.
 Each `find` must occur exactly once in the HTML as it stands after the pairs
@@ -100,13 +110,13 @@ and other MCP plugins offer them to AI assistants, and core serves them at
 | Ability | Does | Hints |
 | --- | --- | --- |
 | `html-page-publisher/list-pages` | List pages, optionally by `status` | read-only |
-| `html-page-publisher/get-page` | One page; `include_html`, `include_files` | read-only |
-| `html-page-publisher/publish-page` | New page from an HTML document, with `status`, `path`, `noindex` and up to 20 `files` (text or base64). Never overwrites | additive |
-| `html-page-publisher/update-page` | `edits` or `html`, plus `status`, `path`, `noindex`, `no_snippets`, `new_slug` | destructive (previous version kept) |
+| `html-page-publisher/get-page` | One page; `include_html`, `include_files` (also returns `missing_files`) | read-only |
+| `html-page-publisher/publish-page` | New page from an HTML document, with `status`, `path`, `noindex`, `seo_title`, `seo_description`, `seo_image` and up to 20 `files` (text or base64). Never overwrites. Returns `missing_files` | additive |
+| `html-page-publisher/update-page` | `edits` or `html`, plus `status`, `path`, `noindex`, `no_snippets`, `seo_title`, `seo_description`, `seo_image`, `new_slug`. Returns `missing_files` | destructive (previous version kept) |
 | `html-page-publisher/duplicate-page` | Copy to a new slug as a draft | additive |
 | `html-page-publisher/list-versions` | Saved versions, newest first | read-only |
 | `html-page-publisher/restore-version` | Restore a version (the current one is saved first) | destructive (undoable) |
-| `html-page-publisher/add-page-file` | One file into `assets/`, text or base64; returns the stored name | additive |
+| `html-page-publisher/add-page-file` | One file into `assets/`, or at an exact `path` such as `images/hero.png` (must be free), text or base64; returns the stored reference and `missing_files` | additive |
 
 Reads need the plugin's capability (`manage_options`); writes also need
 `unfiltered_html`, as in the REST API. Deleting pages or files isn't
@@ -134,7 +144,9 @@ wp htmlpp list
 wp htmlpp publish spring-promo ./index.html --asset=./hero.png
 wp htmlpp publish spring-promo ./site.zip --overwrite --porcelain
 wp htmlpp update spring-promo --status=published --url-path=promo
+wp htmlpp update spring-promo --seo-title="Spring sale" --seo-image=assets/share.png
 wp htmlpp update spring-promo --rename=spring-sale
+wp htmlpp missing spring-promo
 wp htmlpp preview spring-promo --reset
 wp htmlpp versions spring-promo && wp htmlpp restore spring-promo 20260827-171521-ab12cd34.html
 ```
@@ -151,7 +163,7 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 
 ## PHP API
 
-`htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `edit_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `delete_file()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.
+`htmlpp()->pages` is an `HTMLPP_Page_Service` with `list_pages()`, `get()`, `create()`, `update_html()`, `edit_html()`, `set_meta()`, `rename()`, `duplicate()`, `delete()`, `store_file()`, `store_file_at()`, `delete_file()`, `missing_files()`, `fix_reference()`, `versions()`, `restore()`, `reset_preview()`. Methods return arrays or `WP_Error`.
 
 ## Hooks
 
@@ -175,6 +187,7 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 | `htmlpp_allowed_asset_mimes` | filter | MIME whitelist for asset uploads |
 | `htmlpp_editing_disabled` | filter | Lock down in-dashboard editing |
 | `htmlpp_htaccess_rules` | filter | Contents of the protective `.htaccess` |
+| `htmlpp_file_delivery` | filter | `'page'` (files served at the page URL, the default) or `'uploads'` (pages load files straight from the uploads folder, for hosts such as WordPress.com that answer static-file requests themselves); `( $mode, $choice, $check )` |
 | `htmlpp_max_backups` | filter | Version-history retention per page |
 | `htmlpp_page_meta` | filter | A page's metadata record; `( $record, $slug )` |
 | `htmlpp_page_meta_defaults` | filter | Register extra per-page fields an add-on wants persisted. Write them with `htmlpp()->pages->set_meta()`; `get()`, `list_pages()` and REST return them. Prefix your keys and don't store secrets |
@@ -186,6 +199,8 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 | `htmlpp_zip_imported` | action | ZIP unpacked; `( $slug, $import_result )` |
 | `htmlpp_assets_uploaded` / `htmlpp_asset_replaced` / `htmlpp_asset_deleted` | action | File changes; `( $slug, … )` |
 | `htmlpp_page_html` | filter | Final page HTML before it is sent; `( $html, $slug, $meta, $preview )` |
+| `htmlpp_link_preview_tags` | filter | Link preview tags added to a page's head (og:*, twitter:card, and title/description when those fields are set); return `''` for none; `( $tags, $slug, $meta, $preview )` |
+| `htmlpp_missing_files` | filter | Files a page refers to that are missing from its folder; return `[]` to turn the check off; `( $missing, $slug )` |
 | `htmlpp_can_preview` | filter | Who may view a draft; `( $allowed, $slug )` |
 | `htmlpp_sitemap_entries` | filter | Entries for the XML sitemap |
 | `htmlpp_reserved_paths` / `htmlpp_path_collides` | filter | Custom-path validation |

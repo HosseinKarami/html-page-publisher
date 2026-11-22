@@ -110,7 +110,7 @@ class HTMLPP_REST {
 							'type'    => 'boolean',
 							'default' => false,
 						),
-					),
+					) + $this->seo_args(),
 				),
 			)
 		);
@@ -160,7 +160,7 @@ class HTMLPP_REST {
 						'noindex'     => array( 'type' => 'boolean' ),
 						'no_snippets' => array( 'type' => 'boolean' ),
 						'new_slug'    => array( 'type' => 'string' ),
-					),
+					) + $this->seo_args(),
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
@@ -342,8 +342,71 @@ class HTMLPP_REST {
 			}
 		}
 
-		$result = $this->service()->create( $request['slug'], $args );
-		return $this->respond( $result, is_wp_error( $result ) || empty( $result['created'] ) ? 200 : 201 );
+		$service = $this->service();
+		$result  = $service->create( $request['slug'], $args );
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// Link preview fields are page settings: the page exists by now, so a
+		// refused value is reported rather than failing the whole request.
+		$result['messages'] = array();
+		$seo                = $this->seo_fields( $request );
+		if ( ! empty( $seo ) ) {
+			$updated = $service->set_meta( $result['slug'], $seo );
+			if ( is_wp_error( $updated ) ) {
+				$result['messages'][] = sprintf(
+					/* translators: %s: error message */
+					__( 'The page was published, but its link preview fields were not saved: %s', 'html-page-publisher' ),
+					$updated->get_error_message()
+				);
+			} else {
+				$result = array_merge( $result, array_intersect_key( $updated, $seo ) );
+			}
+		}
+		$result['missing_files'] = $this->missing( $result['slug'] );
+
+		return $this->respond( $result, empty( $result['created'] ) ? 200 : 201 );
+	}
+
+	/**
+	 * Link preview arguments.
+	 *
+	 * @return array
+	 */
+	private function seo_args() {
+		return array(
+			'seo_title'       => array( 'type' => 'string' ),
+			'seo_description' => array( 'type' => 'string' ),
+			'seo_image'       => array( 'type' => 'string' ),
+		);
+	}
+
+	/**
+	 * Link preview fields present in a request.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return array
+	 */
+	private function seo_fields( WP_REST_Request $request ) {
+		$fields = array();
+		foreach ( array_keys( $this->seo_args() ) as $key ) {
+			if ( $request->has_param( $key ) ) {
+				$fields[ $key ] = $request[ $key ];
+			}
+		}
+		return $fields;
+	}
+
+	/**
+	 * Files a page refers to that are missing from its folder.
+	 *
+	 * @param string $slug Slug.
+	 * @return array
+	 */
+	private function missing( $slug ) {
+		$missing = $this->service()->missing_files( $slug );
+		return is_wp_error( $missing ) ? array() : $missing;
 	}
 
 	/**
@@ -371,7 +434,7 @@ class HTMLPP_REST {
 			}
 		}
 
-		$meta = array();
+		$meta = $this->seo_fields( $request );
 		foreach ( array( 'status', 'path', 'noindex', 'no_snippets' ) as $key ) {
 			if ( $request->has_param( $key ) ) {
 				$meta[ $key ] = $request[ $key ];
@@ -392,7 +455,11 @@ class HTMLPP_REST {
 			$slug = $result['slug'];
 		}
 
-		return $this->respond( $service->get( $slug ) );
+		$page = $service->get( $slug );
+		if ( ! is_wp_error( $page ) ) {
+			$page['missing_files'] = $this->missing( $slug );
+		}
+		return $this->respond( $page );
 	}
 
 	/**

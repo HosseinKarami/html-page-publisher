@@ -5,7 +5,7 @@ Tags: landing page, claude design, ai, mcp, static html
 Requires at least: 5.9
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -27,6 +27,8 @@ Your AI assistant can also do the publishing. On WordPress 6.9 or later, with an
 * **Custom paths and front page**: serve a page at `/promo/` instead of `/pages/promo/`, or make it the site's front page
 * **Global snippets**: add GA4/GTM/pixel, fonts or a consent banner to every page from Settings (pages can opt out)
 * **SEO**: pages are listed in the WordPress XML sitemap, can be marked noindex, and get a canonical link
+* **Link previews**: set the title, description and image a page shows in search results and when its link is shared on LinkedIn, Slack, WhatsApp and other apps. Pages without preview tags get them filled in from their own title and description
+* **Missing-files check**: after you upload or edit a page, see which images, stylesheets, scripts and other files it refers to that were never uploaded, and upload each one exactly where the page looks for it
 * **Rename and duplicate**: change a slug (the old URL redirects) or copy a page as a new draft
 * **REST API and WP-CLI**: publish from scripts, CI, or an AI agent — `POST /wp-json/htmlpp/v1/pages` with an application password, or `wp htmlpp publish`. A Claude Code skill is included in the [GitHub repository](https://github.com/HosseinKarami/html-page-publisher).
 * **Built-in HTML editor**: edit a published page in the dashboard with the native WordPress code editor (syntax highlighting)
@@ -40,7 +42,7 @@ Your AI assistant can also do the publishing. On WordPress 6.9 or later, with an
 * **Cache-friendly**: ETag and Last-Modified headers with conditional (304) and HEAD support, so browsers and CDNs revalidate cheaply while edits still show immediately
 * **Protected storage**: pages are only served at their public URL; direct access to the uploads folder and to version-history snapshots is blocked, and Settings shows whether your web server honours the protection
 * **Safe by default**: nonce-protected forms, capability checks, path-traversal guards, strict file-extension filtering, and no silent overwrites of live pages
-* **Extensible**: actions and filters for add-ons (`htmlpp_loaded`, `htmlpp_page_published`, `htmlpp_before_serve`, `htmlpp_cache_max_age`, `htmlpp_allowed_asset_mimes`, and more)
+* **Extensible**: actions and filters for add-ons (`htmlpp_loaded`, `htmlpp_page_published`, `htmlpp_before_serve`, `htmlpp_cache_max_age`, `htmlpp_allowed_asset_mimes`, `htmlpp_missing_files`, `htmlpp_link_preview_tags`, and more)
 
 **Use cases**
 
@@ -116,6 +118,10 @@ Any tool that gives you a single, self-contained HTML file. Claude Design's "Exp
 
 In `wp-content/uploads/html-page-publisher/<slug>/`. Each page has its own directory containing an `index.html` and an `assets/` folder for images. Version-history snapshots are kept separately in `wp-content/uploads/html-page-publisher-backups/<slug>/`. Both folders contain an `.htaccess` that denies direct access, so pages are only reachable at their public URL.
 
+= Does it work on WordPress.com? =
+
+Yes, on plans that allow plugins. WordPress.com, like some other hosts, answers requests for CSS, JavaScript, image, font and PDF files in its web server, so they never reach WordPress, and a page's own files would show as missing (an unstyled page, or a blank or black screen). The plugin checks for this and, on those hosts, has pages load their files straight from the uploads folder. Nothing in your HTML is changed. You can see the result, or choose yourself, under **HTML Pages → Settings → General → Page files**. Apple Keynote HTML exports work too.
+
 = I use nginx. Is my storage folder protected? =
 
 nginx ignores `.htaccess`. Pages still work at their public URL, but the raw files could also be fetched from the uploads folder. **HTML Pages → Settings** shows whether direct access is blocked and gives you a ready-made `location` block to add to your nginx server configuration. The same applies to Apache or LiteSpeed configured with `AllowOverride None`.
@@ -123,6 +129,14 @@ nginx ignores `.htaccess`. Pages still work at their public URL, but the raw fil
 = How do I edit a page or change its files after publishing? =
 
 Open **HTML Pages**, click **Edit** on a page. You get the native WordPress code editor for the HTML, a Version History panel to restore earlier saves, and a Files &amp; Assets panel to add, replace, or delete the page's images, CSS, JS, fonts and other files without re-uploading the HTML. Use **Replace** (rather than uploading a new file) to swap a file while keeping the same name, so existing references in your HTML keep working.
+
+= My page shows broken images or no styles. What's wrong? =
+
+Usually the page refers to files that weren't uploaded with it, or that were uploaded to a different folder. After you upload or edit a page, its edit screen lists every image, stylesheet, script, font or linked file the page uses that isn't in its folder. Click **Upload** next to a file and it is stored exactly where the page looks for it, so you don't have to change the HTML. If you already uploaded the file to `assets/` while the page asks for `images/hero.png`, the list says so, and one click points the page at the file you have. AI assistants get the same list when they publish or change a page.
+
+= How do I control how my link looks when it's shared? =
+
+Open the page's edit screen and fill in **Link Preview & Search**: a title, a description and a preview image (pick one of the page's images; 1200 × 630 pixels works best). These are used in search results and when the link is shared on LinkedIn, Slack, WhatsApp, Facebook and other apps, and a filled-in field wins over the page's own tag. Your HTML file isn't changed. If you leave the fields empty, the page keeps its own tags, and any preview tags it lacks are filled in from its own title and description. Apps that have already shown your link may keep the old preview for a while.
 
 = What happens if I upload a slug that already exists? =
 
@@ -182,8 +196,23 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 4. Files &amp; Assets: every file of a page (images, CSS, JS, fonts) with replace and delete in place.
 5. Page settings: draft or published, custom path or front page, noindex, rename and duplicate.
 6. Settings: page URLs and an optional subdomain, tracking code and SEO, and AI assistants, each on its own tab.
+7. Missing files: the files a page uses that were never uploaded, with a one-click upload to the right place, or a fix that points the page at a file you already have.
+8. Link Preview & Search: the title, description and image a page shows in search results and when its link is shared, with a live preview.
 
 == Changelog ==
+
+= 1.7.0 =
+* New: Missing-files check. After you upload or edit a page, its edit screen lists the images, stylesheets, scripts, fonts and linked files the page refers to that aren't in its folder, including those referenced from its stylesheets. Upload each one with one click and it is stored exactly where the page looks for it, so the HTML needs no change. When the file is already there under another folder or name (for example `assets/hero.png` while the page asks for `images/hero.png`), one click points the page at it, and the previous version is kept in its history.
+* New: After an upload, a page with missing files opens on its edit screen with a warning, instead of looking published and fine.
+* New: Link preview and search fields. Each page gets a title, description and preview image for search results and for links shared on LinkedIn, Slack, WhatsApp and other apps, with a live preview on the edit screen. A filled-in field replaces the page's own tag when the page is served; your HTML file isn't changed.
+* New: Pages without link preview tags now get them (og:title, og:description, og:url, og:type, twitter:card), filled in from the page's own title and description. Tags a page already has are left alone, and a relative og:image is made absolute so apps can load it. The `htmlpp_link_preview_tags` filter changes or removes them.
+* New: AI assistants can set the link preview (`seo_title`, `seo_description`, `seo_image` on publish-page and update-page), and get a `missing_files` list whenever they publish, update, read or add a file. add-page-file takes an optional `path` to store a file exactly where the HTML expects it.
+* New: The REST API accepts the link preview fields and returns `missing_files`. WP-CLI has `wp htmlpp missing <slug>`, warns about missing files after `publish`, and takes `--seo-title`, `--seo-description` and `--seo-image` on `update`. Duplicating a page copies its link preview.
+* Fixed: On WordPress.com and other hosts whose web server answers requests for CSS, JavaScript, image, font and PDF files itself, a page's own files never reached WordPress, so pages showed unstyled or as a blank screen. The plugin now checks for this and, on those hosts only, has pages load their files straight from the uploads folder. Links within a page keep working, and nothing in your HTML is changed. Every other host works exactly as before.
+* Fixed: Apple Keynote HTML exports play on those hosts too. Keynote's built-in PDF reader gets a small fix so it finds the slides.
+* New: HTML Pages → Settings → General → Page files shows what the check found, and lets you choose how files load if you ever need to. The `htmlpp_file_delivery` filter does the same in code.
+* Improved: On those hosts, the storage notice no longer suggests blocking the uploads folder, since pages load their files from it.
+* Security: In the dashboard, adding HTML, XML, SVG or JavaScript files to a page now needs the same permission as writing page HTML (`unfiltered_html`). On multisite, site administrators without it could previously add such files, which then ran on the site's address. Images, CSS, fonts and other files are not affected.
 
 = 1.6.0 =
 * New: AI assistants can publish and edit your pages. On WordPress 6.9 or later the plugin registers its page actions as WordPress abilities: list, get, publish, update, duplicate, list versions, restore a version, and add a file. MCP plugins such as the official MCP Adapter offer them to Claude, ChatGPT, Cursor and other assistants. Deleting is never offered, and every change to a page's HTML keeps the previous version.
@@ -286,6 +315,9 @@ You can also `unset()` a built-in rule by its key (for example `claude-design-cf
 * Optional subdomain routing.
 
 == Upgrade Notice ==
+
+= 1.7.0 =
+Lists the files a page uses that were never uploaded, with a one-click fix, and lets you set how each page looks in search results and when its link is shared. Also fixes unstyled or blank pages on WordPress.com and similar hosts.
 
 = 1.6.0 =
 Claude, ChatGPT and other AI assistants can now publish and edit your pages through an MCP plugin (WordPress 6.9+). Also fixes Edit and Delete being pushed out of view in the pages list by long URLs.

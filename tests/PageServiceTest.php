@@ -224,7 +224,7 @@ class PageServiceTest extends TestCase {
 	public function test_page_details_have_no_addon_fields_when_none_are_registered() {
 		$page = $this->service->create( 'plain', array( 'html' => '<p>p</p>' ) );
 		$this->assertSame(
-			array( 'slug', 'title', 'status', 'url', 'preview_url', 'edit_url', 'path', 'noindex', 'no_snippets', 'files', 'modified', 'created', 'author' ),
+			array( 'slug', 'title', 'status', 'url', 'preview_url', 'edit_url', 'path', 'noindex', 'no_snippets', 'seo_title', 'seo_description', 'seo_image', 'files', 'modified', 'created', 'author' ),
 			array_keys( $this->service->get( 'plain' ) )
 		);
 		$this->assertTrue( $page['created'] );

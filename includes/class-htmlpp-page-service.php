@@ -87,19 +87,22 @@ class HTMLPP_Page_Service {
 		$meta = HTMLPP_Meta::get( $slug );
 
 		return array(
-			'slug'        => $slug,
-			'title'       => isset( $row['title'] ) ? $row['title'] : '',
-			'status'      => $meta['status'],
-			'url'         => HTMLPP_Storage::public_page_url( $slug ),
-			'preview_url' => HTMLPP_Meta::is_public( $meta ) ? '' : HTMLPP_Meta::preview_url( $slug ),
-			'edit_url'    => HTMLPP_Admin::edit_url( $slug ),
-			'path'        => $meta['path'],
-			'noindex'     => (bool) $meta['noindex'],
-			'no_snippets' => (bool) $meta['no_snippets'],
-			'files'       => isset( $row['files'] ) ? (int) $row['files'] : 0,
-			'modified'    => isset( $row['modified'] ) ? (int) $row['modified'] : 0,
-			'created'     => (int) $meta['created'],
-			'author'      => (int) $meta['author'],
+			'slug'            => $slug,
+			'title'           => isset( $row['title'] ) ? $row['title'] : '',
+			'status'          => $meta['status'],
+			'url'             => HTMLPP_Storage::public_page_url( $slug ),
+			'preview_url'     => HTMLPP_Meta::is_public( $meta ) ? '' : HTMLPP_Meta::preview_url( $slug ),
+			'edit_url'        => HTMLPP_Admin::edit_url( $slug ),
+			'path'            => $meta['path'],
+			'noindex'         => (bool) $meta['noindex'],
+			'no_snippets'     => (bool) $meta['no_snippets'],
+			'seo_title'       => $meta['seo_title'],
+			'seo_description' => $meta['seo_description'],
+			'seo_image'       => $meta['seo_image'],
+			'files'           => isset( $row['files'] ) ? (int) $row['files'] : 0,
+			'modified'        => isset( $row['modified'] ) ? (int) $row['modified'] : 0,
+			'created'         => (int) $meta['created'],
+			'author'          => (int) $meta['author'],
 		) + HTMLPP_Meta::addon_fields( $meta );
 	}
 
@@ -344,10 +347,11 @@ class HTMLPP_Page_Service {
 	*/
 
 	/**
-	 * Update status, custom path and SEO flags.
+	 * Update status, custom path, SEO flags and link preview fields.
 	 *
 	 * @param string $slug   Slug.
-	 * @param array  $fields Any of status, path, noindex, no_snippets (plus add-on fields).
+	 * @param array  $fields Any of status, path, noindex, no_snippets, seo_title,
+	 *                       seo_description, seo_image (plus add-on fields).
 	 * @return array|WP_Error Page description plus 'messages'.
 	 */
 	public function set_meta( $slug, array $fields ) {
@@ -374,6 +378,19 @@ class HTMLPP_Page_Service {
 				return $path;
 			}
 			$update['path'] = $path;
+		}
+		if ( array_key_exists( 'seo_title', $fields ) ) {
+			$update['seo_title'] = HTMLPP_Seo::clean( $fields['seo_title'], HTMLPP_Seo::TITLE_MAX );
+		}
+		if ( array_key_exists( 'seo_description', $fields ) ) {
+			$update['seo_description'] = HTMLPP_Seo::clean( $fields['seo_description'], HTMLPP_Seo::DESCRIPTION_MAX );
+		}
+		if ( array_key_exists( 'seo_image', $fields ) ) {
+			$image = $this->validate_seo_image( $slug, $fields['seo_image'] );
+			if ( is_wp_error( $image ) ) {
+				return $image;
+			}
+			$update['seo_image'] = $image;
 		}
 		foreach ( $fields as $key => $value ) {
 			if ( ! isset( $update[ $key ] ) && ! in_array( $key, HTMLPP_Meta::CORE_FIELDS, true ) ) {
@@ -471,6 +488,34 @@ class HTMLPP_Page_Service {
 	}
 
 	/**
+	 * Validate a preview image: one of the page's image files (by its
+	 * reference, e.g. assets/share.png), a full http(s) link, or '' to clear.
+	 *
+	 * @param string $slug Slug the image is for.
+	 * @param mixed  $raw  Raw value.
+	 * @return string|WP_Error The value to store.
+	 */
+	public function validate_seo_image( $slug, $raw ) {
+		$image = is_scalar( $raw ) ? trim( (string) $raw ) : '';
+		if ( '' === $image ) {
+			return '';
+		}
+		if ( preg_match( '#^https?://#i', $image ) ) {
+			$url = filter_var( $image, FILTER_VALIDATE_URL );
+			if ( false !== $url && ! preg_match( '/[\s"\'<>]/', $url ) ) {
+				return $url;
+			}
+		} else {
+			$reference = ltrim( (string) preg_replace( '#^\./#', '', str_replace( '\\', '/', $image ) ), '/' );
+			$ext       = strtolower( (string) pathinfo( $reference, PATHINFO_EXTENSION ) );
+			if ( HTMLPP_Storage::is_image_extension( $ext ) && '' !== HTMLPP_Storage::file_path( $slug, $reference ) ) {
+				return $reference;
+			}
+		}
+		return new WP_Error( 'htmlpp_bad_image', __( 'The preview image must be one of the page’s own image files, such as assets/share.png, or a full https:// link to an image.', 'html-page-publisher' ), array( 'status' => 400 ) );
+	}
+
+	/**
 	 * Move a page to a new slug (files, history, metadata; old slug redirects).
 	 *
 	 * @param string $slug     Current slug.
@@ -546,11 +591,14 @@ class HTMLPP_Page_Service {
 		HTMLPP_Meta::update(
 			$new_slug,
 			array(
-				'status'      => 'draft',
-				'path'        => '',
-				'noindex'     => ! empty( $source['noindex'] ),
-				'no_snippets' => ! empty( $source['no_snippets'] ),
-				'author'      => get_current_user_id(),
+				'status'          => 'draft',
+				'path'            => '',
+				'noindex'         => ! empty( $source['noindex'] ),
+				'no_snippets'     => ! empty( $source['no_snippets'] ),
+				'seo_title'       => $source['seo_title'],
+				'seo_description' => $source['seo_description'],
+				'seo_image'       => $source['seo_image'],
+				'author'          => get_current_user_id(),
 			)
 		);
 		HTMLPP_Meta::remove_redirect( $new_slug );
@@ -670,6 +718,237 @@ class HTMLPP_Page_Service {
 			'deleted'          => $reference,
 			'still_referenced' => $still_referenced,
 		);
+	}
+
+	/**
+	 * Store an uploaded file at an exact path in the page's folder, such as
+	 * the images/hero.png a page's HTML refers to, so the reference works
+	 * without editing the HTML. Refuses a path that is already taken.
+	 *
+	 * @param string $slug      Slug.
+	 * @param array  $file      $_FILES-style array (name, tmp_name, type, size, error).
+	 * @param string $reference Path relative to the page folder, e.g. "images/hero.png".
+	 * @param string $mode      'upload' for browser uploads, 'sideload' for local files.
+	 * @return string|WP_Error The stored reference.
+	 */
+	public function store_file_at( $slug, array $file, $reference, $mode = 'upload' ) {
+		$page = $this->get( $slug );
+		if ( is_wp_error( $page ) ) {
+			return $page;
+		}
+		if ( HTMLPP_Uploader::file_editing_disabled() ) {
+			return new WP_Error( 'htmlpp_locked', __( 'Editing is disabled by the DISALLOW_FILE_EDIT / DISALLOW_FILE_MODS constant.', 'html-page-publisher' ), array( 'status' => 403 ) );
+		}
+		$slug      = $page['slug'];
+		$reference = self::clean_reference( $reference );
+		if ( is_wp_error( $reference ) ) {
+			return $reference;
+		}
+
+		$single = HTMLPP_Uploader::normalize_file( $file );
+		$want   = self::comparable_extension( pathinfo( $reference, PATHINFO_EXTENSION ) );
+		if ( self::comparable_extension( pathinfo( $single['name'], PATHINFO_EXTENSION ) ) !== $want ) {
+			return new WP_Error(
+				'htmlpp_wrong_type',
+				sprintf(
+					/* translators: %s: required file extension, e.g. .png */
+					__( 'Choose a %s file: the page expects that type at this path.', 'html-page-publisher' ),
+					'.' . strtolower( pathinfo( $reference, PATHINFO_EXTENSION ) )
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		$root   = realpath( HTMLPP_Storage::page_dir( $slug ) );
+		$target = trailingslashit( HTMLPP_Storage::page_dir( $slug ) ) . $reference;
+		if ( ! $root || file_exists( $target ) ) {
+			return new WP_Error(
+				'htmlpp_file_exists',
+				sprintf(
+					/* translators: %s: file path, e.g. images/hero.png */
+					__( '%s is already in the page’s folder. To change it, use Replace in the file list.', 'html-page-publisher' ),
+					$reference
+				),
+				array( 'status' => 409 )
+			);
+		}
+		$dir = dirname( $target );
+		if ( ! wp_mkdir_p( $dir ) ) {
+			return new WP_Error( 'htmlpp_fs', __( 'The folder could not be created. Check uploads folder permissions.', 'html-page-publisher' ), array( 'status' => 500 ) );
+		}
+		$real_dir = realpath( $dir );
+		if ( ! $real_dir || ( $real_dir !== $root && 0 !== strpos( $real_dir, trailingslashit( $root ) ) ) ) {
+			return new WP_Error( 'htmlpp_bad_reference', __( 'That path is outside the page’s folder.', 'html-page-publisher' ), array( 'status' => 400 ) );
+		}
+
+		$moved = HTMLPP_Uploader::move_asset( $single, $real_dir, $mode );
+		if ( isset( $moved['error'] ) || empty( $moved['file'] ) ) {
+			return new WP_Error( 'htmlpp_file_rejected', ! empty( $moved['error'] ) ? $moved['error'] : __( 'Upload failed.', 'html-page-publisher' ), array( 'status' => 400 ) );
+		}
+		$final = trailingslashit( $real_dir ) . basename( $reference );
+		if ( $moved['file'] !== $final && ! HTMLPP_Storage::move( $moved['file'], $final ) ) {
+			wp_delete_file( $moved['file'] );
+			return new WP_Error( 'htmlpp_fs', __( 'The file could not be saved under that name. Check uploads folder permissions.', 'html-page-publisher' ), array( 'status' => 500 ) );
+		}
+
+		/** This action is documented in includes/class-htmlpp-uploader.php */
+		do_action( 'htmlpp_assets_uploaded', $slug, array( $reference ) );
+		return $reference;
+	}
+
+	/**
+	 * Files the page refers to that are not in its folder: broken images,
+	 * missing stylesheets, scripts, fonts and linked files. See
+	 * HTMLPP_References::missing() for what is checked.
+	 *
+	 * @param string $slug Slug.
+	 * @return array|WP_Error List of { reference, raw, found_in, suggestion }.
+	 */
+	public function missing_files( $slug ) {
+		$page = $this->get( $slug, true );
+		if ( is_wp_error( $page ) ) {
+			return $page;
+		}
+		$slug     = $page['slug'];
+		$existing = array_column( HTMLPP_Storage::list_files( $slug ), 'reference' );
+		$read_css = static function ( $reference ) use ( $slug ) {
+			$path = HTMLPP_Storage::file_path( $slug, $reference );
+			return '' === $path ? false : HTMLPP_Storage::get_contents( $path );
+		};
+
+		$missing = HTMLPP_References::missing(
+			$page['html'],
+			$existing,
+			$read_css,
+			array(
+				'extensions' => HTMLPP_Uploader::allowed_asset_extensions(),
+				'roots'      => array(
+					HTMLPP_Storage::public_page_url( $slug ),
+					HTMLPP_Storage::public_page_url( $slug, true ),
+					HTMLPP_Delivery::files_url( $slug ),
+				),
+			)
+		);
+
+		/**
+		 * Filter the files a page refers to that are missing from its folder.
+		 * Return an empty array to turn the check off.
+		 *
+		 * @param array  $missing List of { reference, raw, found_in, suggestion }.
+		 * @param string $slug    Page slug.
+		 */
+		$filtered = apply_filters( 'htmlpp_missing_files', $missing, $slug );
+		return is_array( $filtered ) ? array_values( $filtered ) : $missing;
+	}
+
+	/**
+	 * Point the page's references to one file at another file in its
+	 * folder: e.g. change images/hero.png to assets/hero.png after the
+	 * image was uploaded to assets/. Every way the HTML writes that path
+	 * (./images/hero.png, images/hero.png?v=2…) is changed, in markup only
+	 * (src, href, srcset, url() in styles…), never in text or scripts. The
+	 * previous version is kept in the page's history.
+	 *
+	 * @param string $slug      Slug.
+	 * @param string $reference The missing file's path, as missing_files() reports it.
+	 * @param string $to        Reference of an existing file, e.g. assets/hero.png.
+	 * @return array|WP_Error Page description plus 'replaced' (how many references changed).
+	 */
+	public function fix_reference( $slug, $reference, $to ) {
+		$page = $this->get( $slug, true );
+		if ( is_wp_error( $page ) ) {
+			return $page;
+		}
+		if ( HTMLPP_Uploader::file_editing_disabled() ) {
+			return new WP_Error( 'htmlpp_locked', __( 'HTML editing is disabled by the DISALLOW_FILE_EDIT / DISALLOW_FILE_MODS constant.', 'html-page-publisher' ), array( 'status' => 403 ) );
+		}
+		$to = trim( str_replace( '\\', '/', (string) $to ), '/' );
+		if ( ! preg_match( '#^[A-Za-z0-9._~@+\-/]+$#', $to ) || '' === HTMLPP_Storage::file_path( $page['slug'], $to ) ) {
+			return new WP_Error( 'htmlpp_bad_reference', __( 'That file isn’t in the page’s folder, so the page was not changed.', 'html-page-publisher' ), array( 'status' => 400 ) );
+		}
+
+		// Every spelling of the path in the HTML.
+		$spellings = array();
+		foreach ( HTMLPP_References::from_html( $page['html'] ) as $raw ) {
+			$path = (string) preg_replace( '/[?#].*$/s', '', $raw );
+			if ( HTMLPP_References::resolve( $path ) === (string) $reference ) {
+				$spellings[ $path ] = true;
+			}
+		}
+
+		$html  = $page['html'];
+		$count = 0;
+		foreach ( array_keys( $spellings ) as $spelling ) {
+			$result = HTMLPP_References::replace( $html, $spelling, $to );
+			$html   = $result['html'];
+			$count += $result['count'];
+		}
+		if ( 0 === $count ) {
+			return new WP_Error(
+				'htmlpp_reference_not_found',
+				sprintf(
+					/* translators: %s: file reference, e.g. images/hero.png */
+					__( 'The page no longer refers to %s, so nothing was changed.', 'html-page-publisher' ),
+					(string) $reference
+				),
+				array( 'status' => 400 )
+			);
+		}
+
+		$saved = $this->update_html( $page['slug'], $html );
+		if ( is_wp_error( $saved ) ) {
+			return $saved;
+		}
+		$saved['replaced'] = $count;
+		return $saved;
+	}
+
+	/**
+	 * Validate a path for a new file in a page's folder.
+	 *
+	 * @param string $reference Raw path.
+	 * @return string|WP_Error Normalized path.
+	 */
+	private static function clean_reference( $reference ) {
+		$reference = trim( str_replace( '\\', '/', (string) $reference ), '/' );
+		$reference = (string) preg_replace( '#^(\./)+#', '', $reference );
+		$segments  = explode( '/', $reference );
+		$name      = end( $segments );
+		$ext       = strtolower( (string) pathinfo( $name, PATHINFO_EXTENSION ) );
+
+		$ok = '' !== $reference
+			&& count( $segments ) <= 6
+			&& 'index.html' !== $reference
+			&& in_array( $ext, HTMLPP_Uploader::allowed_asset_extensions(), true )
+			&& ! HTMLPP_Renderer::is_blocked_extension( $ext )
+			&& ! HTMLPP_Renderer::has_blocked_extension_part( $name )
+			&& sanitize_file_name( $name ) === $name;
+		foreach ( $segments as $segment ) {
+			if ( ! $ok ) {
+				break;
+			}
+			$ok = (bool) preg_match( '/^[A-Za-z0-9_\-][A-Za-z0-9._\-]*$/', $segment );
+		}
+
+		if ( ! $ok ) {
+			return new WP_Error(
+				'htmlpp_bad_reference',
+				__( 'That file path can’t be used. Use letters, numbers, dots, hyphens and underscores, a file type the plugin serves, and no more than five folders. To use a different name, change the reference in the HTML.', 'html-page-publisher' ),
+				array( 'status' => 400 )
+			);
+		}
+		return $reference;
+	}
+
+	/**
+	 * An extension for comparing file types (jpeg and jpg are the same).
+	 *
+	 * @param string $ext Extension.
+	 * @return string
+	 */
+	private static function comparable_extension( $ext ) {
+		$ext = strtolower( (string) $ext );
+		return 'jpeg' === $ext ? 'jpg' : $ext;
 	}
 
 	/*

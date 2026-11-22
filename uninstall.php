@@ -18,6 +18,8 @@ delete_option( 'htmlpp_settings' );
 delete_option( 'htmlpp_version' );
 delete_option( 'htmlpp_installed_at' );
 delete_option( 'htmlpp_publish_count' );
+delete_option( 'htmlpp_file_check' );
+wp_clear_scheduled_hook( 'htmlpp_check_file_delivery' );
 // Page metadata (draft status, custom paths, redirects) is content, like the
 // page files themselves, and is deliberately kept so a reinstall does not
 // publish former drafts. Delete the htmlpp_pages, htmlpp_redirects and

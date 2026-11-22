@@ -8,6 +8,7 @@
  *  - Reposition WP's Help / Screen Options DOM to sit below the hero
  *  - Initialize WP's CodeMirror on the page editor textarea
  *  - Settings → AI assistants: app picker, password, setup text, copy
+ *  - Edit screen: live link preview card
  */
 ( function () {
 	'use strict';
@@ -18,6 +19,7 @@
 		initDropzones();
 		initCodeEditor();
 		initAssetReplace();
+		initSeoPreview();
 		initReviewNotice();
 		initSearch();
 		initCopy();
@@ -334,6 +336,85 @@
 					}
 				}
 			} );
+		} );
+	}
+
+	/**
+	 * Keep the "Shared link" card in step with the link preview fields. An
+	 * empty field falls back to what the page itself says.
+	 */
+	function initSeoPreview() {
+		var form = document.querySelector( '[data-htmlpp-seo]' );
+		if ( ! form ) {
+			return;
+		}
+		var title = form.querySelector( '[data-htmlpp-seo-field="title"]' );
+		var desc = form.querySelector( '[data-htmlpp-seo-field="description"]' );
+		var image = form.querySelector( '[data-htmlpp-seo-field="image"]' );
+		var outTitle = document.querySelector( '[data-htmlpp-preview="title"]' );
+		var outDesc = document.querySelector( '[data-htmlpp-preview="description"]' );
+		var outImage = document.querySelector( '[data-htmlpp-preview="image"]' );
+
+		function value( field ) {
+			if ( ! field ) {
+				return '';
+			}
+			var own = field.value.trim();
+			return own || field.getAttribute( 'data-htmlpp-fallback' ) || '';
+		}
+
+		function render() {
+			if ( outTitle ) {
+				outTitle.textContent = value( title ) || outTitle.getAttribute( 'data-htmlpp-empty' ) || '';
+			}
+			if ( outDesc ) {
+				outDesc.textContent = value( desc );
+			}
+			if ( outImage && image ) {
+				var option = image.options[ image.selectedIndex ];
+				var url = ( option && option.getAttribute( 'data-url' ) ) || image.getAttribute( 'data-htmlpp-fallback' ) || '';
+				var img = outImage.querySelector( 'img' );
+				if ( url ) {
+					if ( ! img ) {
+						img = document.createElement( 'img' );
+						img.alt = '';
+						outImage.appendChild( img );
+						watch( img );
+					}
+					if ( img.getAttribute( 'src' ) !== url ) {
+						img.setAttribute( 'src', url );
+					}
+					outImage.classList.remove( 'is-empty' );
+				} else {
+					if ( img ) {
+						img.remove();
+					}
+					outImage.classList.add( 'is-empty' );
+				}
+			}
+		}
+
+		// An image that fails to load (deleted, or blocked) hides the frame.
+		function watch( img ) {
+			img.addEventListener( 'error', function () {
+				outImage.classList.add( 'is-empty' );
+			} );
+			img.addEventListener( 'load', function () {
+				outImage.classList.remove( 'is-empty' );
+			} );
+			if ( img.complete && 0 === img.naturalWidth && img.getAttribute( 'src' ) ) {
+				outImage.classList.add( 'is-empty' );
+			}
+		}
+		if ( outImage && outImage.querySelector( 'img' ) ) {
+			watch( outImage.querySelector( 'img' ) );
+		}
+
+		[ title, desc, image ].forEach( function ( field ) {
+			if ( field ) {
+				field.addEventListener( 'input', render );
+				field.addEventListener( 'change', render );
+			}
 		} );
 	}
 

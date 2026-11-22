@@ -15,6 +15,9 @@
  * @var array      $meta             Page metadata from HTMLPP_Meta::get().
  * @var string     $preview_url      Shareable preview URL.
  * @var string     $accept           accept="" list for file inputs.
+ * @var array      $missing          Files the page refers to that are missing (HTMLPP_Page_Service::missing_files()).
+ * @var array      $seo_own          The page's own title, description and image (HTMLPP_Seo::page_values()).
+ * @var string     $seo_image_url    URL of the preview image chosen in the fields ('' for none).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -85,12 +88,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div class="wp-header-end"></div>
 
 		<?php if ( $notice ) : ?>
-			<?php $htmlpp_class = 'success' === $notice['type'] ? 'htmlpp-notice--success' : 'htmlpp-notice--error'; ?>
+			<?php $htmlpp_class = in_array( $notice['type'], array( 'success', 'warning' ), true ) ? 'htmlpp-notice--' . $notice['type'] : 'htmlpp-notice--error'; ?>
 			<div class="htmlpp-notice <?php echo esc_attr( $htmlpp_class ); ?>">
 				<span class="htmlpp-notice__icon" aria-hidden="true">
 					<?php if ( 'success' === $notice['type'] ) : ?>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="20 6 9 17 4 12"/>
+						</svg>
+					<?php elseif ( 'warning' === $notice['type'] ) : ?>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+							<line x1="12" y1="9" x2="12" y2="13"/>
+							<line x1="12" y1="17" x2="12.01" y2="17"/>
 						</svg>
 					<?php else : ?>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -147,6 +156,97 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<input type="hidden" name="htmlpp_reset_preview" value="<?php echo esc_attr( $slug ); ?>" />
 						<button type="submit" class="button-link"><?php esc_html_e( 'Reset preview link', 'html-page-publisher' ); ?></button>
 					</form>
+				</div>
+			</div>
+		<?php endif; ?>
+
+		<?php if ( ! empty( $missing ) ) : ?>
+			<div class="htmlpp-card htmlpp-missing" id="htmlpp-missing-files">
+				<div class="htmlpp-card__header">
+					<div>
+						<h2 class="htmlpp-card__title">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %d: number of missing files */
+									_n( '%d file this page uses is missing', '%d files this page uses are missing', count( $missing ), 'html-page-publisher' ),
+									count( $missing )
+								)
+							);
+							?>
+						</h2>
+						<p class="htmlpp-card__subtitle"><?php esc_html_e( 'The page refers to these files, but they aren’t in its folder, so visitors see a broken image, missing styles or a broken link. Upload each one and it goes exactly where the page looks for it.', 'html-page-publisher' ); ?></p>
+					</div>
+					<span class="htmlpp-badge htmlpp-badge--warning"><?php echo (int) count( $missing ); ?></span>
+				</div>
+				<div class="htmlpp-card__body htmlpp-card__body--flush">
+					<ul class="htmlpp-missing__list">
+						<?php foreach ( $missing as $htmlpp_file ) : ?>
+							<?php $htmlpp_ext = strtolower( (string) pathinfo( $htmlpp_file['reference'], PATHINFO_EXTENSION ) ); ?>
+							<li class="htmlpp-missing__item">
+								<div class="htmlpp-missing__file">
+									<code class="htmlpp-missing__ref"><?php echo esc_html( $htmlpp_file['reference'] ); ?></code>
+									<span class="htmlpp-missing__where">
+										<?php
+										printf(
+											/* translators: %s: file the reference is in, e.g. index.html or css/site.css */
+											esc_html__( 'Used in %s', 'html-page-publisher' ),
+											esc_html( $htmlpp_file['found_in'] )
+										);
+										?>
+									</span>
+									<?php if ( '' !== $htmlpp_file['suggestion'] ) : ?>
+										<span class="htmlpp-missing__hint">
+											<?php
+											printf(
+												/* translators: %s: path of an existing file, e.g. assets/hero.png */
+												esc_html__( 'This page’s folder has %s. Is that the one?', 'html-page-publisher' ),
+												'<code>' . esc_html( $htmlpp_file['suggestion'] ) . '</code>'
+											);
+											?>
+										</span>
+									<?php endif; ?>
+								</div>
+								<?php if ( ! $editing_disabled ) : ?>
+									<div class="htmlpp-missing__actions">
+										<?php if ( '' !== $htmlpp_file['suggestion'] && 'index.html' === $htmlpp_file['found_in'] ) : ?>
+											<form method="post">
+												<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
+												<input type="hidden" name="htmlpp_fix_ref" value="<?php echo esc_attr( $slug ); ?>" />
+												<input type="hidden" name="htmlpp_ref" value="<?php echo esc_attr( $htmlpp_file['reference'] ); ?>" />
+												<input type="hidden" name="htmlpp_ref_to" value="<?php echo esc_attr( $htmlpp_file['suggestion'] ); ?>" />
+												<button type="submit" class="htmlpp-asset-btn">
+													<?php
+													printf(
+														/* translators: %s: path of an existing file, e.g. assets/hero.png */
+														esc_html__( 'Use %s', 'html-page-publisher' ),
+														esc_html( basename( $htmlpp_file['suggestion'] ) )
+													);
+													?>
+												</button>
+											</form>
+										<?php endif; ?>
+										<form method="post" enctype="multipart/form-data" class="htmlpp-asset-replace">
+											<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
+											<input type="hidden" name="htmlpp_missing_upload" value="<?php echo esc_attr( $slug ); ?>" />
+											<input type="hidden" name="htmlpp_missing_ref" value="<?php echo esc_attr( $htmlpp_file['reference'] ); ?>" />
+											<label class="htmlpp-asset-btn htmlpp-asset-btn--primary">
+												<input type="file" name="htmlpp_missing_file" accept="<?php echo esc_attr( in_array( $htmlpp_ext, array( 'jpg', 'jpeg' ), true ) ? '.jpg,.jpeg' : '.' . $htmlpp_ext ); ?>" />
+												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+													<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+													<polyline points="17 8 12 3 7 8"/>
+													<line x1="12" y1="3" x2="12" y2="15"/>
+												</svg>
+												<?php esc_html_e( 'Upload', 'html-page-publisher' ); ?>
+												<span class="screen-reader-text"><?php echo esc_html( $htmlpp_file['reference'] ); ?></span>
+											</label>
+											<button type="submit" class="screen-reader-text"><?php esc_html_e( 'Upload file', 'html-page-publisher' ); ?></button>
+										</form>
+									</div>
+								<?php endif; ?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
 				</div>
 			</div>
 		<?php endif; ?>
@@ -419,6 +519,104 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</div>
 					<p class="htmlpp-field__help"><?php esc_html_e( 'Copies the HTML and all files to a new draft page.', 'html-page-publisher' ); ?></p>
 				</form>
+			</div>
+		</div>
+
+		<?php
+		$htmlpp_images  = array_values(
+			array_filter(
+				$assets,
+				static function ( $file ) {
+					return ! empty( $file['is_image'] );
+				}
+			)
+		);
+		$htmlpp_title   = '' !== $meta['seo_title'] ? $meta['seo_title'] : $seo_own['title'];
+		$htmlpp_desc    = '' !== $meta['seo_description'] ? $meta['seo_description'] : $seo_own['description'];
+		$htmlpp_image   = '' !== $seo_image_url ? $seo_image_url : $seo_own['image'];
+		$htmlpp_host    = (string) wp_parse_url( $page_url, PHP_URL_HOST );
+		$htmlpp_is_link = '' !== $meta['seo_image'] && preg_match( '#^https?://#i', $meta['seo_image'] );
+		?>
+		<div class="htmlpp-card" style="margin-top:20px;" id="htmlpp-link-preview">
+			<div class="htmlpp-card__header">
+				<div>
+					<h2 class="htmlpp-card__title"><?php esc_html_e( 'Link Preview & Search', 'html-page-publisher' ); ?></h2>
+					<p class="htmlpp-card__subtitle"><?php esc_html_e( 'How this page looks in search results and when its link is shared on LinkedIn, Slack, WhatsApp and other apps. Empty fields keep what the page itself says. Your HTML file isn’t changed.', 'html-page-publisher' ); ?></p>
+				</div>
+			</div>
+			<div class="htmlpp-card__body">
+				<div class="htmlpp-seo">
+					<form method="post" class="htmlpp-seo__form" data-htmlpp-seo>
+						<?php wp_nonce_field( 'htmlpp_action', 'htmlpp_nonce' ); ?>
+						<input type="hidden" name="htmlpp_page_seo" value="<?php echo esc_attr( $slug ); ?>" />
+
+						<div class="htmlpp-field">
+							<label class="htmlpp-field__label" for="htmlpp_seo_title"><?php esc_html_e( 'Title', 'html-page-publisher' ); ?></label>
+							<div class="htmlpp-field__control">
+								<input type="text" id="htmlpp_seo_title" name="htmlpp_seo_title" value="<?php echo esc_attr( $meta['seo_title'] ); ?>" maxlength="<?php echo (int) HTMLPP_Seo::TITLE_MAX; ?>" placeholder="<?php echo esc_attr( '' !== $seo_own['title'] ? $seo_own['title'] : __( 'The page has no <title>', 'html-page-publisher' ) ); ?>" data-htmlpp-seo-field="title" data-htmlpp-fallback="<?php echo esc_attr( $seo_own['title'] ); ?>" />
+							</div>
+							<p class="htmlpp-field__help"><?php esc_html_e( 'Leave empty to use the page’s own <title>. Search results show about 60 characters.', 'html-page-publisher' ); ?></p>
+						</div>
+
+						<div class="htmlpp-field">
+							<label class="htmlpp-field__label" for="htmlpp_seo_description"><?php esc_html_e( 'Description', 'html-page-publisher' ); ?></label>
+							<div class="htmlpp-field__control">
+								<textarea id="htmlpp_seo_description" name="htmlpp_seo_description" rows="3" maxlength="<?php echo (int) HTMLPP_Seo::DESCRIPTION_MAX; ?>" placeholder="<?php echo esc_attr( '' !== $seo_own['description'] ? $seo_own['description'] : __( 'The page has no description', 'html-page-publisher' ) ); ?>" data-htmlpp-seo-field="description" data-htmlpp-fallback="<?php echo esc_attr( $seo_own['description'] ); ?>"><?php echo esc_textarea( $meta['seo_description'] ); ?></textarea>
+							</div>
+							<p class="htmlpp-field__help"><?php esc_html_e( 'One or two sentences about the page. Search results show about 155 characters.', 'html-page-publisher' ); ?></p>
+						</div>
+
+						<div class="htmlpp-field">
+							<label class="htmlpp-field__label" for="htmlpp_seo_image"><?php esc_html_e( 'Preview image', 'html-page-publisher' ); ?></label>
+							<div class="htmlpp-field__control">
+								<select id="htmlpp_seo_image" name="htmlpp_seo_image" data-htmlpp-seo-field="image" data-htmlpp-fallback="<?php echo esc_attr( $seo_own['image'] ); ?>">
+									<option value="" data-url=""><?php echo esc_html( '' !== $seo_own['image'] ? __( 'The page’s own image', 'html-page-publisher' ) : __( 'None', 'html-page-publisher' ) ); ?></option>
+									<?php if ( $htmlpp_is_link ) : ?>
+										<option value="<?php echo esc_attr( $meta['seo_image'] ); ?>" data-url="<?php echo esc_url( $meta['seo_image'] ); ?>" selected><?php echo esc_html( $meta['seo_image'] ); ?></option>
+									<?php endif; ?>
+									<?php foreach ( $htmlpp_images as $htmlpp_img ) : ?>
+										<option value="<?php echo esc_attr( $htmlpp_img['reference'] ); ?>" data-url="<?php echo esc_url( $htmlpp_img['url'] ); ?>" <?php selected( $meta['seo_image'], $htmlpp_img['reference'] ); ?>><?php echo esc_html( $htmlpp_img['reference'] ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+							<p class="htmlpp-field__help">
+								<?php
+								if ( empty( $htmlpp_images ) ) {
+									esc_html_e( 'To use a picture, upload it under Files & Assets first. 1200 × 630 pixels works best.', 'html-page-publisher' );
+								} else {
+									esc_html_e( 'Pick one of this page’s images. 1200 × 630 pixels works best.', 'html-page-publisher' );
+								}
+								?>
+							</p>
+						</div>
+
+						<div class="htmlpp-actionbar">
+							<button type="submit" class="htmlpp-button-primary">
+								<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<polyline points="20 6 9 17 4 12"/>
+								</svg>
+								<?php esc_html_e( 'Save Link Preview', 'html-page-publisher' ); ?>
+							</button>
+						</div>
+					</form>
+
+					<div class="htmlpp-seo__preview" aria-hidden="true">
+						<span class="htmlpp-seo__preview-label"><?php esc_html_e( 'Shared link', 'html-page-publisher' ); ?></span>
+						<div class="htmlpp-share">
+							<div class="htmlpp-share__image<?php echo '' === $htmlpp_image ? ' is-empty' : ''; ?>" data-htmlpp-preview="image">
+								<?php if ( '' !== $htmlpp_image ) : ?>
+									<img src="<?php echo esc_url( $htmlpp_image ); ?>" alt="" />
+								<?php endif; ?>
+							</div>
+							<div class="htmlpp-share__body">
+								<span class="htmlpp-share__host"><?php echo esc_html( $htmlpp_host ); ?></span>
+								<span class="htmlpp-share__title" data-htmlpp-preview="title" data-htmlpp-empty="<?php esc_attr_e( 'No title', 'html-page-publisher' ); ?>"><?php echo esc_html( '' !== $htmlpp_title ? $htmlpp_title : __( 'No title', 'html-page-publisher' ) ); ?></span>
+								<span class="htmlpp-share__desc" data-htmlpp-preview="description"><?php echo esc_html( $htmlpp_desc ); ?></span>
+							</div>
+						</div>
+						<p class="htmlpp-field__help"><?php esc_html_e( 'Each app draws its own card, so the real one may look a little different.', 'html-page-publisher' ); ?></p>
+					</div>
+				</div>
 			</div>
 		</div>
 

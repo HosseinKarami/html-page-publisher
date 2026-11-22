@@ -40,6 +40,11 @@ class HTMLPP_Abilities {
 	const MAX_FILES = 20;
 
 	/**
+	 * Link preview fields accepted by publish-page and update-page.
+	 */
+	const SEO_FIELDS = array( 'seo_title', 'seo_description', 'seo_image' );
+
+	/**
 	 * MCP plugins known to offer public abilities to AI assistants, by
 	 * plugin file. Shown on the Settings screen when one is active.
 	 */
@@ -284,7 +289,7 @@ class HTMLPP_Abilities {
 			),
 			'get-page'        => array(
 				'label'               => __( 'Get an HTML page', 'html-page-publisher' ),
-				'description'         => __( 'Returns one HTML page’s details: public URL, status, private preview link for drafts, custom path and SEO settings. Set include_html to also get the page’s full HTML, which you need before changing it with html-page-publisher/update-page, and include_files to list its images, CSS, JavaScript and other files.', 'html-page-publisher' ),
+				'description'         => __( 'Returns one HTML page’s details: public URL, status, private preview link for drafts, custom path and SEO settings. Set include_html to also get the page’s full HTML, which you need before changing it with html-page-publisher/update-page, and include_files to list its images, CSS, JavaScript and other files, plus any files the page refers to that are missing.', 'html-page-publisher' ),
 				'input_schema'        => $this->object_schema(
 					array(
 						'slug'          => $this->slug_property(),
@@ -302,16 +307,17 @@ class HTMLPP_Abilities {
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
-						'page'  => $this->page_schema(),
-						'html'  => array(
+						'page'          => $this->page_schema(),
+						'html'          => array(
 							'type'        => 'string',
 							'description' => __( 'The page’s HTML source (only when include_html is true).', 'html-page-publisher' ),
 						),
-						'files' => array(
+						'files'         => array(
 							'type'        => 'array',
 							'description' => __( 'The page’s files (only when include_files is true). Reference one from the HTML by its reference, e.g. assets/hero.png.', 'html-page-publisher' ),
 							'items'       => $this->file_schema(),
 						),
+						'missing_files' => $this->missing_schema(),
 					),
 				),
 				'execute_callback'    => array( $this, 'get_page' ),
@@ -320,7 +326,7 @@ class HTMLPP_Abilities {
 			),
 			'publish-page'    => array(
 				'label'               => __( 'Publish an HTML page', 'html-page-publisher' ),
-				'description'         => __( 'Publishes a new standalone landing page from a complete HTML document (its own <html>, <head>, CSS and JavaScript). The page is served exactly as written at its own URL, outside the WordPress theme, so its design stays intact. Use it for pages designed outside WordPress, such as Claude Design exports or AI-generated landing pages; use regular WordPress posts or pages for content that should use the site’s theme. Creates new pages only: to change an existing page, use html-page-publisher/update-page. Set status to draft to get a private preview link before going live. Images and other files can be attached in files and referenced from the HTML as assets/<name>. The response includes the page’s public URL.', 'html-page-publisher' ),
+				'description'         => __( 'Publishes a new standalone landing page from a complete HTML document (its own <html>, <head>, CSS and JavaScript). The page is served exactly as written at its own URL, outside the WordPress theme, so its design stays intact. Use it for pages designed outside WordPress, such as Claude Design exports or AI-generated landing pages; use regular WordPress posts or pages for content that should use the site’s theme. Creates new pages only: to change an existing page, use html-page-publisher/update-page. Set status to draft to get a private preview link before going live. Images and other files can be attached in files and referenced from the HTML as assets/<name>. seo_title, seo_description and seo_image set how the link looks in search results and when shared. The response includes the page’s public URL, and missing_files lists any file the HTML refers to that was not uploaded: add each with html-page-publisher/add-page-file.', 'html-page-publisher' ),
 				'input_schema'        => $this->object_schema(
 					array(
 						'slug'    => $this->slug_property(),
@@ -339,7 +345,10 @@ class HTMLPP_Abilities {
 							'type'        => 'boolean',
 							'description' => __( 'Ask search engines not to index the page. Default false.', 'html-page-publisher' ),
 						),
-						'files'   => array(
+					)
+					+ $this->seo_properties()
+					+ array(
+						'files' => array(
 							'type'        => 'array',
 							'maxItems'    => self::MAX_FILES,
 							'description' => __( 'Files to store in the page’s assets folder, e.g. images or a stylesheet. Reference each from the HTML as assets/<name>.', 'html-page-publisher' ),
@@ -351,18 +360,19 @@ class HTMLPP_Abilities {
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
-						'page'        => $this->page_schema(),
-						'files_added' => array(
+						'page'          => $this->page_schema(),
+						'files_added'   => array(
 							'type'        => 'array',
 							'description' => __( 'Names of the files stored in assets/.', 'html-page-publisher' ),
 							'items'       => array( 'type' => 'string' ),
 						),
-						'file_errors' => array(
+						'file_errors'   => array(
 							'type'        => 'array',
 							'description' => __( 'Files that were refused, with the reason. The page was published without them.', 'html-page-publisher' ),
 							'items'       => array( 'type' => 'string' ),
 						),
-						'messages'    => $this->messages_schema(),
+						'missing_files' => $this->missing_schema(),
+						'messages'      => $this->messages_schema(),
 					),
 				),
 				'execute_callback'    => array( $this, 'publish_page' ),
@@ -371,7 +381,7 @@ class HTMLPP_Abilities {
 			),
 			'update-page'     => array(
 				'label'               => __( 'Update an HTML page', 'html-page-publisher' ),
-				'description'         => __( 'Changes an existing HTML page. To change its content, send either edits (exact find-and-replace pairs, best for small changes) or html (the complete new document). You can also change its settings: status (publish a draft, or unpublish a live page), a custom path, noindex, no_snippets, or new_slug to rename it (the old URL redirects). Every change to the HTML saves the previous version in the page’s history, so it can be undone with html-page-publisher/restore-version.', 'html-page-publisher' ),
+				'description'         => __( 'Changes an existing HTML page. To change its content, send either edits (exact find-and-replace pairs, best for small changes) or html (the complete new document). You can also change its settings: status (publish a draft, or unpublish a live page), a custom path, noindex, no_snippets, the link preview fields seo_title, seo_description and seo_image, or new_slug to rename it (the old URL redirects). Every change to the HTML saves the previous version in the page’s history, so it can be undone with html-page-publisher/restore-version.', 'html-page-publisher' ),
 				'input_schema'        => $this->object_schema(
 					array(
 						'slug'        => $this->slug_property(),
@@ -415,7 +425,10 @@ class HTMLPP_Abilities {
 							'type'        => 'boolean',
 							'description' => __( 'Leave out the site-wide head and footer snippets (analytics and similar) on this page.', 'html-page-publisher' ),
 						),
-						'new_slug'    => array(
+					)
+					+ $this->seo_properties()
+					+ array(
+						'new_slug' => array(
 							'type'        => 'string',
 							'minLength'   => 1,
 							'description' => __( 'Rename the page to this slug. The old URL redirects to the new one.', 'html-page-publisher' ),
@@ -426,8 +439,9 @@ class HTMLPP_Abilities {
 				'output_schema'       => array(
 					'type'       => 'object',
 					'properties' => array(
-						'page'     => $this->page_schema(),
-						'messages' => $this->messages_schema(),
+						'page'          => $this->page_schema(),
+						'missing_files' => $this->missing_schema(),
+						'messages'      => $this->messages_schema(),
 					),
 				),
 				'execute_callback'    => array( $this, 'update_page' ),
@@ -522,15 +536,21 @@ class HTMLPP_Abilities {
 			),
 			'add-page-file'   => array(
 				'label'               => __( 'Add a file to an HTML page', 'html-page-publisher' ),
-				'description'         => __( 'Adds an image, stylesheet, script, font or other file to a page’s assets folder. Send text files (SVG, CSS, JavaScript) as text and binary files (PNG, JPEG, WebP, fonts) as base64. Reference the file from the page’s HTML as assets/<name>, using the name in the response: if the name is taken, a number is added. SVG files are cleaned of scripts; PHP and other executable files are refused.', 'html-page-publisher' ),
+				'description'         => __( 'Adds an image, stylesheet, script, font or other file to a page’s assets folder. Send text files (SVG, CSS, JavaScript) as text and binary files (PNG, JPEG, WebP, fonts) as base64. Reference the file from the page’s HTML as assets/<name>, using the name in the response: if the name is taken, a number is added. To supply a file the HTML already refers to elsewhere (listed in missing_files), give its path, e.g. images/hero.png, and the HTML needs no change. SVG files are cleaned of scripts; PHP and other executable files are refused.', 'html-page-publisher' ),
 				'input_schema'        => $this->object_schema(
 					array_merge(
 						array( 'slug' => $this->slug_property() ),
-						$this->file_input_schema()['properties']
+						$this->file_input_schema()['properties'],
+						array(
+							'path' => array(
+								'type'        => 'string',
+								'description' => __( 'Optional. Where to store the file in the page’s folder instead of assets/, e.g. images/hero.png: use a reference from missing_files. It must have the same file type as name and must not be taken.', 'html-page-publisher' ),
+							),
+						)
 					),
 					array( 'slug', 'name', 'content' )
 				),
-				'output_schema'       => $this->file_schema(),
+				'output_schema'       => $this->added_file_schema(),
 				'execute_callback'    => array( $this, 'add_page_file' ),
 				'permission_callback' => $write,
 				'annotations'         => $this->annotations( false, false, false ),
@@ -651,7 +671,8 @@ class HTMLPP_Abilities {
 			if ( is_wp_error( $files ) ) {
 				return $files;
 			}
-			$result['files'] = array_map( array( $this, 'file_entry' ), $files );
+			$result['files']         = array_map( array( $this, 'file_entry' ), $files );
+			$result['missing_files'] = $this->missing_entries( $page['slug'] );
 		}
 		return $result;
 	}
@@ -739,6 +760,11 @@ class HTMLPP_Abilities {
 		if ( array_key_exists( 'noindex', $input ) ) {
 			$settings['noindex'] = self::flag( $input, 'noindex' );
 		}
+		foreach ( self::SEO_FIELDS as $key ) {
+			if ( array_key_exists( $key, $input ) ) {
+				$settings[ $key ] = self::text( $input, $key );
+			}
+		}
 		if ( ! empty( $settings ) ) {
 			$updated = $service->set_meta( $slug, $settings );
 			if ( is_wp_error( $updated ) ) {
@@ -750,11 +776,17 @@ class HTMLPP_Abilities {
 			}
 		}
 
+		$missing = $this->missing_entries( $slug );
+		if ( ! empty( $missing ) ) {
+			$messages[] = self::missing_message( $missing );
+		}
+
 		return array(
-			'page'        => $service->get( $slug ),
-			'files_added' => array_values( (array) $created['files_added'] ),
-			'file_errors' => array_merge( $errors, array_values( (array) $created['file_errors'] ) ),
-			'messages'    => $messages,
+			'page'          => $service->get( $slug ),
+			'files_added'   => array_values( (array) $created['files_added'] ),
+			'file_errors'   => array_merge( $errors, array_values( (array) $created['file_errors'] ) ),
+			'missing_files' => $missing,
+			'messages'      => $messages,
 		);
 	}
 
@@ -776,7 +808,7 @@ class HTMLPP_Abilities {
 		$has_edits = array_key_exists( 'edits', $input );
 		$has_html  = array_key_exists( 'html', $input );
 		$settings  = array();
-		foreach ( array( 'status', 'path' ) as $key ) {
+		foreach ( array_merge( array( 'status', 'path' ), self::SEO_FIELDS ) as $key ) {
 			if ( array_key_exists( $key, $input ) ) {
 				$settings[ $key ] = self::text( $input, $key );
 			}
@@ -792,7 +824,7 @@ class HTMLPP_Abilities {
 			return new WP_Error( 'htmlpp_edits_and_html', __( 'Send either edits or html, not both. Nothing was changed.', 'html-page-publisher' ), array( 'status' => 400 ) );
 		}
 		if ( ! $has_edits && ! $has_html && empty( $settings ) && '' === $new_slug ) {
-			return new WP_Error( 'htmlpp_nothing_to_update', __( 'Nothing to update: send edits, html, status, path, noindex, no_snippets or new_slug.', 'html-page-publisher' ), array( 'status' => 400 ) );
+			return new WP_Error( 'htmlpp_nothing_to_update', __( 'Nothing to update: send edits, html, status, path, noindex, no_snippets, seo_title, seo_description, seo_image or new_slug.', 'html-page-publisher' ), array( 'status' => 400 ) );
 		}
 
 		if ( $has_edits ) {
@@ -828,9 +860,15 @@ class HTMLPP_Abilities {
 			$slug = $result['slug'];
 		}
 
+		$missing = $this->missing_entries( $slug );
+		if ( ! empty( $missing ) && ( $has_edits || $has_html ) ) {
+			$messages[] = self::missing_message( $missing );
+		}
+
 		return array(
-			'page'     => $service->get( $slug ),
-			'messages' => $messages,
+			'page'          => $service->get( $slug ),
+			'missing_files' => $missing,
+			'messages'      => $messages,
 		);
 	}
 
@@ -888,16 +926,23 @@ class HTMLPP_Abilities {
 		if ( is_wp_error( $prepared ) ) {
 			return $prepared;
 		}
-		$stored = $service->store_file( $page['slug'], $prepared, 'sideload' );
+		$path = self::text( $input, 'path' );
+		if ( '' !== $path ) {
+			$reference = $service->store_file_at( $page['slug'], $prepared, $path, 'sideload' );
+		} else {
+			$stored    = $service->store_file( $page['slug'], $prepared, 'sideload' );
+			$reference = is_wp_error( $stored ) ? $stored : 'assets/' . $stored;
+		}
 		self::cleanup( array( $prepared['tmp_name'] ) );
-		if ( is_wp_error( $stored ) ) {
-			return $stored;
+		if ( is_wp_error( $reference ) ) {
+			return $reference;
 		}
 
 		return array(
-			'name'      => $stored,
-			'reference' => 'assets/' . $stored,
-			'url'       => HTMLPP_Storage::public_asset_url( $page['slug'], $stored ),
+			'name'          => basename( $reference ),
+			'reference'     => $reference,
+			'url'           => HTMLPP_Storage::public_file_url( $page['slug'], $reference ),
+			'missing_files' => $this->missing_entries( $page['slug'] ),
 		);
 	}
 
@@ -1012,6 +1057,57 @@ class HTMLPP_Abilities {
 			'reference' => isset( $file['reference'] ) ? (string) $file['reference'] : '',
 			'url'       => isset( $file['url'] ) ? (string) $file['url'] : '',
 			'size'      => isset( $file['size'] ) ? (int) $file['size'] : 0,
+		);
+	}
+
+	/**
+	 * Files the page refers to that are missing, in the public shape.
+	 *
+	 * @param string $slug Page slug.
+	 * @return array[]
+	 */
+	private function missing_entries( $slug ) {
+		$missing = $this->service()->missing_files( $slug );
+		if ( is_wp_error( $missing ) ) {
+			return array();
+		}
+		return array_map(
+			static function ( $entry ) {
+				return array(
+					'reference'  => isset( $entry['reference'] ) ? (string) $entry['reference'] : '',
+					'raw'        => isset( $entry['raw'] ) ? (string) $entry['raw'] : '',
+					'found_in'   => isset( $entry['found_in'] ) ? (string) $entry['found_in'] : '',
+					'suggestion' => isset( $entry['suggestion'] ) ? (string) $entry['suggestion'] : '',
+				);
+			},
+			$missing
+		);
+	}
+
+	/**
+	 * A note for the user about missing files.
+	 *
+	 * @param array[] $missing Entries from missing_entries().
+	 * @return string
+	 */
+	private static function missing_message( array $missing ) {
+		$names = array_slice( array_column( $missing, 'reference' ), 0, 5 );
+		$more  = count( $missing ) - count( $names );
+		return sprintf(
+			/* translators: 1: number of files, 2: comma-separated file paths, 3: " and N more" or empty */
+			_n(
+				'The page refers to %1$d file that is not in its folder, so it will show as missing: %2$s%3$s. Upload it with html-page-publisher/add-page-file using that path, or change the reference in the HTML.',
+				'The page refers to %1$d files that are not in its folder, so they will show as missing: %2$s%3$s. Upload each with html-page-publisher/add-page-file using its path, or change the references in the HTML.',
+				count( $missing ),
+				'html-page-publisher'
+			),
+			count( $missing ),
+			implode( ', ', $names ),
+			$more > 0 ? sprintf(
+				/* translators: %d: number of further files */
+				__( ' and %d more', 'html-page-publisher' ),
+				$more
+			) : ''
 		);
 	}
 
@@ -1167,6 +1263,72 @@ class HTMLPP_Abilities {
 	}
 
 	/**
+	 * Link preview input properties.
+	 *
+	 * @return array
+	 */
+	private function seo_properties() {
+		return array(
+			'seo_title'       => array(
+				'type'        => 'string',
+				'description' => __( 'Title shown in search results and when the link is shared (replaces the page’s own <title> when served). An empty string goes back to the page’s own title.', 'html-page-publisher' ),
+			),
+			'seo_description' => array(
+				'type'        => 'string',
+				'description' => __( 'Description shown in search results and link previews, ideally under 160 characters. An empty string goes back to the page’s own description.', 'html-page-publisher' ),
+			),
+			'seo_image'       => array(
+				'type'        => 'string',
+				'description' => __( 'Preview image shown when the link is shared: one of the page’s image files by its reference (e.g. assets/share.png, ideally 1200×630 pixels) or a full https:// link. An empty string removes it.', 'html-page-publisher' ),
+			),
+		);
+	}
+
+	/**
+	 * Files a page refers to that are not in its folder.
+	 *
+	 * @return array
+	 */
+	private function missing_schema() {
+		return array(
+			'type'        => 'array',
+			'description' => __( 'Files the page’s HTML or stylesheets refer to that are not in its folder; visitors see them as broken. Upload each with html-page-publisher/add-page-file and its reference as path, or change the reference in the HTML (suggestion names an existing file it probably meant).', 'html-page-publisher' ),
+			'items'       => array(
+				'type'       => 'object',
+				'properties' => array(
+					'reference'  => array(
+						'type'        => 'string',
+						'description' => __( 'Path of the missing file in the page’s folder.', 'html-page-publisher' ),
+					),
+					'raw'        => array(
+						'type'        => 'string',
+						'description' => __( 'The reference exactly as written in the file.', 'html-page-publisher' ),
+					),
+					'found_in'   => array(
+						'type'        => 'string',
+						'description' => __( 'Where it is referenced: index.html or a stylesheet’s path.', 'html-page-publisher' ),
+					),
+					'suggestion' => array(
+						'type'        => 'string',
+						'description' => __( 'An existing file it probably meant, or empty.', 'html-page-publisher' ),
+					),
+				),
+			),
+		);
+	}
+
+	/**
+	 * Output of add-page-file.
+	 *
+	 * @return array
+	 */
+	private function added_file_schema() {
+		$schema                                = $this->file_schema();
+		$schema['properties']['missing_files'] = $this->missing_schema();
+		return $schema;
+	}
+
+	/**
 	 * Notes about side effects, such as redirects created.
 	 *
 	 * @return array
@@ -1189,42 +1351,54 @@ class HTMLPP_Abilities {
 		return array(
 			'type'       => 'object',
 			'properties' => array(
-				'slug'        => array( 'type' => 'string' ),
-				'title'       => array(
+				'slug'            => array( 'type' => 'string' ),
+				'title'           => array(
 					'type'        => 'string',
 					'description' => __( 'The page’s <title>.', 'html-page-publisher' ),
 				),
-				'status'      => array(
+				'status'          => array(
 					'type'        => 'string',
 					'description' => __( 'published or draft.', 'html-page-publisher' ),
 				),
-				'url'         => array(
+				'url'             => array(
 					'type'        => 'string',
 					'description' => __( 'Public URL. Visitors can open it only while the page is published.', 'html-page-publisher' ),
 				),
-				'preview_url' => array(
+				'preview_url'     => array(
 					'type'        => 'string',
 					'description' => __( 'Private preview link for a draft, which works without logging in. Empty when published.', 'html-page-publisher' ),
 				),
-				'edit_url'    => array(
+				'edit_url'        => array(
 					'type'        => 'string',
 					'description' => __( 'Where an administrator edits the page in the dashboard.', 'html-page-publisher' ),
 				),
-				'path'        => array(
+				'path'            => array(
 					'type'        => 'string',
 					'description' => __( 'Custom URL path, "/" for the front page, or empty.', 'html-page-publisher' ),
 				),
-				'noindex'     => array( 'type' => 'boolean' ),
-				'no_snippets' => array( 'type' => 'boolean' ),
-				'files'       => array(
+				'noindex'         => array( 'type' => 'boolean' ),
+				'no_snippets'     => array( 'type' => 'boolean' ),
+				'seo_title'       => array(
+					'type'        => 'string',
+					'description' => __( 'Link preview and search title; empty when the page’s own <title> is used.', 'html-page-publisher' ),
+				),
+				'seo_description' => array(
+					'type'        => 'string',
+					'description' => __( 'Link preview and search description; empty when the page’s own is used.', 'html-page-publisher' ),
+				),
+				'seo_image'       => array(
+					'type'        => 'string',
+					'description' => __( 'Preview image: a file reference such as assets/share.png, a full URL, or empty.', 'html-page-publisher' ),
+				),
+				'files'           => array(
 					'type'        => 'integer',
 					'description' => __( 'Number of files besides index.html.', 'html-page-publisher' ),
 				),
-				'modified'    => array(
+				'modified'        => array(
 					'type'        => 'integer',
 					'description' => __( 'Last change (Unix time).', 'html-page-publisher' ),
 				),
-				'created'     => array(
+				'created'         => array(
 					'type'        => 'integer',
 					'description' => __( 'When the page was created (Unix time).', 'html-page-publisher' ),
 				),

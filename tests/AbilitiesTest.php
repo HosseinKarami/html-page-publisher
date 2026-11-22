@@ -431,7 +431,8 @@ class AbilitiesTest extends TestCase {
 				'include_files' => true,
 			)
 		);
-		$this->assertSame( array( 'page', 'html', 'files' ), array_keys( $full ) );
+		$this->assertSame( array( 'page', 'html', 'files', 'missing_files' ), array_keys( $full ) );
+		$this->assertSame( array(), $full['missing_files'] );
 		$this->assertStringContainsString( '<p>body</p>', $full['html'] );
 		$this->assertSame( 'assets/a.css', $full['files'][0]['reference'] );
 		$this->assertSame( 'https://example.com/pages/g/assets/a.css', $full['files'][0]['url'] );
@@ -649,6 +650,110 @@ class AbilitiesTest extends TestCase {
 			)
 		);
 		$this->assertSame( 'logo-1.svg', $second['name'], 'A taken name gets a number; the response says which.' );
+	}
+
+	public function test_publish_reports_missing_files_and_sets_the_link_preview() {
+		$out = $this->run_ability(
+			'publish-page',
+			array(
+				'slug'            => 'promo',
+				'html'            => $this->html( '<img src="images/hero.png"><img src="assets/share.png">' ),
+				'seo_title'       => 'Spring sale',
+				'seo_description' => 'Half price this week.',
+				'seo_image'       => 'assets/share.png',
+				'files'           => array(
+					array(
+						'name'     => 'share.png',
+						'content'  => self::PNG,
+						'encoding' => 'base64',
+					),
+				),
+			)
+		);
+
+		$this->assertSame( 'Spring sale', $out['page']['seo_title'] );
+		$this->assertSame( 'Half price this week.', $out['page']['seo_description'] );
+		$this->assertSame( 'assets/share.png', $out['page']['seo_image'] );
+		$this->assertSame(
+			array(
+				array(
+					'reference'  => 'images/hero.png',
+					'raw'        => 'images/hero.png',
+					'found_in'   => 'index.html',
+					'suggestion' => '',
+				),
+			),
+			$out['missing_files']
+		);
+		$this->assertCount( 1, $out['messages'] );
+		$this->assertStringContainsString( 'images/hero.png', $out['messages'][0] );
+
+		// The assistant uploads the file where the HTML expects it.
+		$added = $this->run_ability(
+			'add-page-file',
+			array(
+				'slug'     => 'promo',
+				'name'     => 'hero.png',
+				'content'  => self::PNG,
+				'encoding' => 'base64',
+				'path'     => 'images/hero.png',
+			)
+		);
+		$this->assertSame( 'hero.png', $added['name'] );
+		$this->assertSame( 'images/hero.png', $added['reference'] );
+		$this->assertSame( 'https://example.com/pages/promo/images/hero.png', $added['url'] );
+		$this->assertSame( array(), $added['missing_files'] );
+
+		$taken = $this->run_ability(
+			'add-page-file',
+			array(
+				'slug'    => 'promo',
+				'name'    => 'x.png',
+				'content' => self::PNG,
+				'path'    => 'images/hero.png',
+			)
+		);
+		$this->assertSame( 'htmlpp_file_exists', $taken->get_error_code() );
+	}
+
+	public function test_update_sets_link_preview_fields_and_refuses_a_bad_image() {
+		htmlpp()->pages->create( 'u', array( 'html' => $this->html( '<img src="gone.png">' ) ) );
+
+		$out = $this->run_ability(
+			'update-page',
+			array(
+				'slug'      => 'u',
+				'seo_title' => 'New title',
+			)
+		);
+		$this->assertSame( 'New title', $out['page']['seo_title'] );
+		$this->assertSame( 'gone.png', $out['missing_files'][0]['reference'] );
+		$this->assertSame( array(), $out['messages'], 'Settings-only changes do not repeat the missing-files note.' );
+
+		$this->assertSame(
+			'htmlpp_bad_image',
+			$this->run_ability(
+				'update-page',
+				array(
+					'slug'      => 'u',
+					'seo_image' => 'assets/nope.png',
+				)
+			)->get_error_code()
+		);
+
+		$edited = $this->run_ability(
+			'update-page',
+			array(
+				'slug'  => 'u',
+				'edits' => array(
+					array(
+						'find'    => 'gone.png',
+						'replace' => 'still-gone.png',
+					),
+				),
+			)
+		);
+		$this->assertStringContainsString( 'still-gone.png', $edited['messages'][0] );
 	}
 
 	public function test_add_page_file_refuses_bad_input() {
