@@ -113,6 +113,7 @@ final class HTMLPP_Plugin {
 		$this->renderer = new HTMLPP_Renderer();
 		$this->rest     = new HTMLPP_REST();
 		new HTMLPP_Sitemap();
+		HTMLPP_Delivery::init();
 
 		// Lets AI assistants publish and edit pages (WordPress 6.9+).
 		if ( HTMLPP_Abilities::supported() ) {
@@ -161,6 +162,10 @@ final class HTMLPP_Plugin {
 				update_option( HTMLPP_Settings::OPTION, $settings );
 			}
 		}
+
+		// 1.6.1: check, in the background, whether this host answers requests
+		// for page files (CSS, JS, images) itself. Re-run on every upgrade.
+		HTMLPP_Delivery::schedule_check();
 
 		update_option( self::VERSION_OPTION, HTMLPP_VERSION );
 
@@ -240,6 +245,8 @@ final class HTMLPP_Plugin {
 		if ( false === get_option( 'htmlpp_installed_at' ) ) {
 			add_option( 'htmlpp_installed_at', time() );
 		}
+
+		HTMLPP_Delivery::schedule_check();
 
 		// Fresh install: nothing to migrate, so the upgrade routine is a no-op.
 		if ( false === get_option( self::VERSION_OPTION ) ) {

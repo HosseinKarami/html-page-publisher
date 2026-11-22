@@ -151,6 +151,11 @@ class HTMLPP_Renderer {
 			return;
 		}
 
+		// The file-delivery check asks whether requests like this reach us.
+		if ( HTMLPP_Delivery::is_probe( $match['slug'], $match['rel'] ) && empty( $match['is_home'] ) ) {
+			HTMLPP_Delivery::serve_probe( $match['rel'] );
+		}
+
 		$slug     = $match['slug'];
 		$page_dir = HTMLPP_Storage::page_dir( $slug );
 
@@ -231,7 +236,13 @@ class HTMLPP_Renderer {
 			// public_page_url() already resolves subdomain and custom-path forms;
 			// $match['canonical'] is a path, so it cannot be used directly.
 			$base = $needs_slash ? HTMLPP_Storage::public_page_url( $slug ) : '';
-			self::stream_page( $file, $slug, $meta, $settings, $preview, $base );
+			// On hosts that answer file requests themselves, the page loads its
+			// files from the uploads folder; links still resolve to the page.
+			$delivery = array(
+				'files' => HTMLPP_Delivery::files_base_for_request( $slug, $host ),
+				'page'  => $match['canonical'],
+			);
+			self::stream_page( $file, $slug, $meta, $settings, $preview, $base, $delivery );
 		}
 
 		self::stream( $file, $ext, $slug, $preview, ! empty( $meta['noindex'] ) );
@@ -854,22 +865,24 @@ class HTMLPP_Renderer {
 	 * @param bool   $last Return the last occurrence instead of the first.
 	 * @return int|false
 	 */
-	private static function find_tag_outside_scripts( $html, $tag, $last = false ) {
-		$found = array();
-		$depth = 0;
-		$re    = '/<!--.*?-->|<script\b[^>]*>.*?<\/script>|<style\b[^>]*>.*?<\/style>|' . preg_quote( $tag, '/' ) . '/is';
-		if ( preg_match_all( $re, $html, $matches, PREG_OFFSET_CAPTURE ) ) {
-			foreach ( $matches[0] as $m ) {
-				if ( 0 === strcasecmp( $m[0], $tag ) ) {
-					$found[] = $m[1];
+	public static function find_tag_outside_scripts( $html, $tag, $last = false ) {
+		// Walk the markup between comments, scripts and styles with string
+		// search, so a large inline script cannot exhaust PCRE's limits.
+		$found  = false;
+		$offset = 0;
+		foreach ( HTMLPP_References::segments( (string) $html ) as $segment ) {
+			if ( 'markup' === $segment[0] ) {
+				$at = $last ? strripos( $segment[1], $tag ) : stripos( $segment[1], $tag );
+				if ( false !== $at ) {
+					$found = $offset + $at;
+					if ( ! $last ) {
+						return $found;
+					}
 				}
 			}
+			$offset += strlen( $segment[1] );
 		}
-		unset( $depth );
-		if ( empty( $found ) ) {
-			return false;
-		}
-		return $last ? end( $found ) : $found[0];
+		return $found;
 	}
 
 	/**
@@ -881,16 +894,55 @@ class HTMLPP_Renderer {
 	 * @param array  $settings Plugin settings.
 	 * @param bool   $preview  Whether this is a draft preview.
 	 * @param string $base_url Base URL for relative references ('' to skip).
+	 * @param array  $delivery Optional. 'files' (uploads-folder URL the page
+	 *                         loads its files from, '' for none) and 'page'
+	 *                         (the page's own URL or path). See HTMLPP_Delivery.
 	 * @return string
 	 */
-	public static function decorate_page( $html, $slug, array $meta, array $settings, $preview = false, $base_url = '' ) {
+	public static function decorate_page( $html, $slug, array $meta, array $settings, $preview = false, $base_url = '', array $delivery = array() ) {
+		// First, so its <base> leads the head and the no-trailing-slash base
+		// below sees it and stays out.
+		if ( ! empty( $delivery['files'] ) ) {
+			$html = HTMLPP_Delivery::apply( $html, (string) $delivery['files'], isset( $delivery['page'] ) ? (string) $delivery['page'] : '' );
+		}
+
+		// Link preview and search fields. A filled-in field replaces the
+		// page's own tag; preview tags the page lacks are filled in from its
+		// own title and description.
+		$seo  = HTMLPP_Seo::prepare(
+			$html,
+			array(
+				'title'       => isset( $meta['seo_title'] ) ? (string) $meta['seo_title'] : '',
+				'description' => isset( $meta['seo_description'] ) ? (string) $meta['seo_description'] : '',
+				'image'       => self::seo_image_url( $slug, isset( $meta['seo_image'] ) ? (string) $meta['seo_image'] : '' ),
+			),
+			array(
+				'url'  => $preview ? '' : HTMLPP_Storage::public_page_url( $slug ),
+				'base' => HTMLPP_Storage::public_file_url( $slug, '' ),
+			)
+		);
+		$html = $seo['html'];
+
+		/**
+		 * Filter the link preview tags added to a page's head (og:title,
+		 * og:description, og:image, og:url, og:type, twitter:card, and the
+		 * title and description when those fields are filled in). Return ''
+		 * to add none.
+		 *
+		 * @param string $tags    Tags, one per line.
+		 * @param string $slug    Page slug.
+		 * @param array  $meta    Page metadata.
+		 * @param bool   $preview Whether this is a draft preview.
+		 */
+		$tags = (string) apply_filters( 'htmlpp_link_preview_tags', $seo['head'], $slug, $meta, $preview );
+
 		$snippets = empty( $meta['no_snippets'] ) && ! $preview;
 		$head     = $snippets && ! empty( $settings['head_snippet'] ) ? (string) $settings['head_snippet'] : '';
 		$footer   = $snippets && ! empty( $settings['footer_snippet'] ) ? (string) $settings['footer_snippet'] : '';
 		$noindex  = ! empty( $meta['noindex'] ) || $preview;
 		$canon    = ! empty( $settings['canonical'] ) && ! $preview ? HTMLPP_Storage::public_page_url( $slug ) : '';
 
-		$html = self::decorate( $html, $head, $footer, $canon, $noindex, $base_url );
+		$html = self::decorate( $html, trim( trim( $tags ) . "\n" . trim( $head ) ), $footer, $canon, $noindex, $base_url );
 
 		/**
 		 * Filter a page's HTML right before it is sent.
@@ -901,6 +953,25 @@ class HTMLPP_Renderer {
 		 * @param bool   $preview  Whether this is a draft preview.
 		 */
 		return (string) apply_filters( 'htmlpp_page_html', $html, $slug, $meta, $preview );
+	}
+
+	/**
+	 * Absolute URL of a page's preview image setting: one of its own files,
+	 * or a full link. '' when unset or when the file is gone.
+	 *
+	 * @param string $slug  Page slug.
+	 * @param string $image The seo_image field.
+	 * @return string
+	 */
+	public static function seo_image_url( $slug, $image ) {
+		$image = trim( (string) $image );
+		if ( '' === $image ) {
+			return '';
+		}
+		if ( preg_match( '#^https?://#i', $image ) ) {
+			return $image;
+		}
+		return '' !== HTMLPP_Storage::file_path( $slug, $image ) ? HTMLPP_Storage::public_file_url( $slug, $image ) : '';
 	}
 
 	/*
@@ -1024,13 +1095,14 @@ class HTMLPP_Renderer {
 	 * @param array  $settings Plugin settings.
 	 * @param bool   $preview  Whether this is a draft preview.
 	 * @param string $base_url Base URL for relative references ('' to skip).
+	 * @param array  $delivery See decorate_page().
 	 */
-	private static function stream_page( $file, $slug, array $meta, array $settings, $preview, $base_url = '' ) {
+	private static function stream_page( $file, $slug, array $meta, array $settings, $preview, $base_url = '', array $delivery = array() ) {
 		$html = HTMLPP_Storage::get_contents( $file );
 		if ( false === $html ) {
 			return;
 		}
-		$html = self::decorate_page( $html, $slug, $meta, $settings, $preview, $base_url );
+		$html = self::decorate_page( $html, $slug, $meta, $settings, $preview, $base_url, $delivery );
 
 		$mtime = (int) filemtime( $file );
 		// The final output (snippets, filters, canonical) is what the client

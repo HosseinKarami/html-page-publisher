@@ -203,7 +203,53 @@ class HTMLPP_CLI extends WP_CLI_Command {
 		foreach ( $page['file_errors'] as $error ) {
 			WP_CLI::warning( $error );
 		}
+		$this->warn_missing( $page['slug'] );
 		WP_CLI::success( ( $page['created'] ? 'Published ' : 'Replaced ' ) . $slug . ' → ' . $url );
+	}
+
+	/**
+	 * List the files a page refers to that are not in its folder.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <slug>
+	 * : Page slug.
+	 *
+	 * [--format=<format>]
+	 * : table, json, csv, yaml. Default: table.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp htmlpp missing spring-promo
+	 *
+	 * @param array $args       Positional args.
+	 * @param array $assoc_args Flags.
+	 */
+	public function missing( $args, $assoc_args ) {
+		$missing = $this->check( $this->service()->missing_files( $args[0] ) );
+		if ( empty( $missing ) ) {
+			WP_CLI::success( 'Every file the page refers to is in its folder.' );
+			return;
+		}
+		WP_CLI\Utils\format_items( isset( $assoc_args['format'] ) ? $assoc_args['format'] : 'table', $missing, array( 'reference', 'found_in', 'suggestion' ) );
+	}
+
+	/**
+	 * Warn about files a page refers to that are not in its folder.
+	 *
+	 * @param string $slug Slug.
+	 */
+	private function warn_missing( $slug ) {
+		$missing = $this->service()->missing_files( $slug );
+		if ( is_wp_error( $missing ) ) {
+			return;
+		}
+		foreach ( $missing as $file ) {
+			WP_CLI::warning(
+				'Missing: ' . $file['reference'] . ' (referenced in ' . $file['found_in'] . ')'
+				. ( '' !== $file['suggestion'] ? ' — did you mean ' . $file['suggestion'] . '?' : '' )
+			);
+		}
 	}
 
 	/**
@@ -227,12 +273,22 @@ class HTMLPP_CLI extends WP_CLI_Command {
 	 * [--hide-snippets=<bool>]
 	 * : true/false — skip the global head/footer snippets on this page.
 	 *
+	 * [--seo-title=<title>]
+	 * : Title for search results and link previews ("" uses the page's own).
+	 *
+	 * [--seo-description=<text>]
+	 * : Description for search results and link previews ("" uses the page's own).
+	 *
+	 * [--seo-image=<image>]
+	 * : Preview image: one of the page's files (e.g. assets/share.png) or a full URL ("" removes it).
+	 *
 	 * [--rename=<new-slug>]
 	 * : Move the page to a new slug (old URL redirects).
 	 *
 	 * ## EXAMPLES
 	 *
 	 *     wp htmlpp update spring-promo --status=published --url-path=promo
+	 *     wp htmlpp update spring-promo --seo-title="Spring sale" --seo-image=assets/share.png
 	 *     wp htmlpp update spring-promo --rename=spring-sale
 	 *
 	 * @param array $args       Positional args.
@@ -252,6 +308,11 @@ class HTMLPP_CLI extends WP_CLI_Command {
 		}
 		if ( isset( $assoc_args['hide-snippets'] ) ) {
 			$meta['no_snippets'] = filter_var( $assoc_args['hide-snippets'], FILTER_VALIDATE_BOOLEAN );
+		}
+		foreach ( array( 'seo-title', 'seo-description', 'seo-image' ) as $flag ) {
+			if ( isset( $assoc_args[ $flag ] ) ) {
+				$meta[ str_replace( '-', '_', $flag ) ] = (string) $assoc_args[ $flag ];
+			}
 		}
 		if ( ! empty( $meta ) ) {
 			$page = $this->check( $this->service()->set_meta( $slug, $meta ) );

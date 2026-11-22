@@ -478,7 +478,7 @@ class HTMLPP_Storage {
 	}
 
 	/**
-	 * Public URL of one of a page's assets (served through the renderer).
+	 * Public URL of one of a page's assets.
 	 *
 	 * @param string $slug        Page slug.
 	 * @param string $name        Asset filename (basename).
@@ -486,7 +486,24 @@ class HTMLPP_Storage {
 	 * @return string
 	 */
 	public static function public_asset_url( $slug, $name, $main_domain = false ) {
-		return self::public_page_url( $slug, $main_domain ) . 'assets/' . rawurlencode( $name );
+		return self::public_file_url( $slug, 'assets/' . $name, $main_domain );
+	}
+
+	/**
+	 * Public URL of any file in a page's folder: at the page's URL through
+	 * the renderer, or straight from the uploads folder on hosts that answer
+	 * file requests themselves (see HTMLPP_Delivery).
+	 *
+	 * @param string $slug        Page slug.
+	 * @param string $reference   Path relative to the page folder.
+	 * @param bool   $main_domain See public_page_url().
+	 * @return string
+	 */
+	public static function public_file_url( $slug, $reference, $main_domain = false ) {
+		$base = class_exists( 'HTMLPP_Delivery' ) && HTMLPP_Delivery::UPLOADS === HTMLPP_Delivery::mode()
+			? HTMLPP_Delivery::files_url( $slug )
+			: self::public_page_url( $slug, $main_domain );
+		return $base . implode( '/', array_map( 'rawurlencode', explode( '/', (string) $reference ) ) );
 	}
 
 	/**
@@ -1122,9 +1139,8 @@ class HTMLPP_Storage {
 		$files   = array();
 		self::walk( $root, '', $pattern, $files, 0 );
 
-		$page_url = self::public_page_url( $slug, true );
 		foreach ( $files as &$file ) {
-			$file['url'] = $page_url . implode( '/', array_map( 'rawurlencode', explode( '/', $file['reference'] ) ) );
+			$file['url'] = self::public_file_url( $slug, $file['reference'], true );
 		}
 		unset( $file );
 

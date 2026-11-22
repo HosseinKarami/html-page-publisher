@@ -84,7 +84,10 @@ JSON instead of multipart is also accepted:
 
 The response is the page object: `url`, `status`, `preview_url` (drafts),
 `edit_url`, `created` (false when a `overwrite=true` replace), `skipped` (ZIP
-entries refused, e.g. `.php`), `file_errors`. A duplicate slug without
+entries refused, e.g. `.php`), `file_errors`, and `missing_files`: files the
+HTML or its stylesheets refer to that were not uploaded (`reference`,
+`found_in`, `suggestion`). If it is not empty, upload those files (Step 3) or
+fix the references before calling the page done. A duplicate slug without
 `overwrite=true` returns `409 htmlpp_exists`; a validation problem returns a
 `400` with a `code` like `htmlpp_bad_path`.
 
@@ -98,7 +101,7 @@ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' "https://example.com/pa
 ```
 
 Expect `200 text/html`. **Report `url` (or `preview_url` for drafts) to the
-user**, and mention anything in `skipped`/`file_errors`.
+user**, and mention anything in `skipped`/`file_errors`/`missing_files`.
 
 ## Step 3 — later changes
 
@@ -109,8 +112,10 @@ user**, and mention anything in `skipped`/`file_errors`.
 | Publish a draft | `PUT /pages/{slug}` JSON `{"status": "published"}` |
 | Serve at `/promo/` or as the front page | `PUT /pages/{slug}` JSON `{"path": "promo"}` or `{"path": "/"}` |
 | Hide from search engines | `PUT /pages/{slug}` JSON `{"noindex": true}` |
+| Set the link preview (search results, shared links) | `PUT /pages/{slug}` JSON `{"seo_title": "…", "seo_description": "…", "seo_image": "assets/share.png"}` (image: one of the page's files, ideally 1200×630, or a full https URL; `""` clears a field) |
 | Rename (old URL redirects) | `PUT /pages/{slug}` JSON `{"new_slug": "spring-sale"}` |
-| Add files | `POST /pages/{slug}/files` multipart `files[]` |
+| Add files | `POST /pages/{slug}/files` multipart `files[]` (stored in `assets/`) |
+| Check for missing files | `wp htmlpp missing {slug}`, or `missing_files` in any `POST`/`PUT` response |
 | Delete a file | `DELETE /pages/{slug}/files?reference=assets/hero.png` |
 | Version history / restore | `GET /pages/{slug}/versions`, `POST /pages/{slug}/versions/{name}/restore` |
 | Preview link / reset it | `GET` / `DELETE /pages/{slug}/preview-link` |
@@ -122,7 +127,12 @@ user**, and mention anything in `skipped`/`file_errors`.
 - Claude Design exports are cleaned automatically (its runtime "tweaks"
   wrappers are stripped). Any self-contained HTML works.
 - Reference assets relatively (`assets/hero.png`, `css/site.css`); the plugin
-  serves everything under the page's own URL.
+  serves everything under the page's own URL. Files uploaded with `files[]`
+  land in `assets/`, so reference them as `assets/<name>`, or send a ZIP that
+  keeps your folder layout.
+- Give the page a `<title>` and `<meta name="description">`, or set
+  `seo_title`/`seo_description`: they become its search result and link
+  preview.
 - Forms inside static HTML do not submit anywhere by themselves; say so if
   the page contains one.
 - Executable files (`.php`, …) are never stored. ZIP entries that were refused

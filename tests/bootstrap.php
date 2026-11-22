@@ -63,7 +63,7 @@ function current_user_can( $capability ) {
 }
 
 function did_action( $hook ) {
-	return 0;
+	return $GLOBALS['htmlpp_test_did'][ $hook ] ?? 0;
 }
 
 function home_url( $path = '' ) {
@@ -140,6 +140,10 @@ function esc_url( $url ) {
 
 function size_format( $bytes ) {
 	return round( $bytes / MB_IN_BYTES ) . ' MB';
+}
+
+function _n( $single, $plural, $number, $domain = null ) {
+	return 1 === (int) $number ? $single : $plural;
 }
 
 function __( $text, $domain = null ) { // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
@@ -308,6 +312,10 @@ function sanitize_file_name( $name ) {
 	return preg_replace( '/[^A-Za-z0-9._-]/', '-', (string) $name );
 }
 
+function sanitize_key( $key ) {
+	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+
 function sanitize_text_field( $value ) {
 	return trim( strip_tags( (string) $value ) );
 }
@@ -367,6 +375,9 @@ require_once dirname( __DIR__ ) . '/includes/class-htmlpp-settings.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-meta.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-storage.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-sanitizer.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-references.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-seo.php';
+require_once dirname( __DIR__ ) . '/includes/class-htmlpp-delivery.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-renderer.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-svg.php';
 require_once dirname( __DIR__ ) . '/includes/class-htmlpp-zip.php';

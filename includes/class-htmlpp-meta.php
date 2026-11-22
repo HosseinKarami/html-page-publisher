@@ -43,7 +43,7 @@ class HTMLPP_Meta {
 	 * Fields HTML Page Publisher manages itself. Any other field in a record
 	 * was registered by an add-on through `htmlpp_page_meta_defaults`.
 	 */
-	const CORE_FIELDS = array( 'status', 'path', 'noindex', 'no_snippets', 'preview_salt', 'created', 'updated', 'author' );
+	const CORE_FIELDS = array( 'status', 'path', 'noindex', 'no_snippets', 'seo_title', 'seo_description', 'seo_image', 'preview_salt', 'created', 'updated', 'author' );
 
 	/**
 	 * Request-scoped cache of the path map.
@@ -59,14 +59,17 @@ class HTMLPP_Meta {
 	 */
 	public static function defaults() {
 		$defaults = array(
-			'status'       => 'published', // Either 'published' or 'draft'.
-			'path'         => '',          // Empty for the prefix URL; the word home for the front page; otherwise a relative path.
-			'noindex'      => false,
-			'no_snippets'  => false,
-			'preview_salt' => 0,           // Bumped to invalidate the preview link.
-			'created'      => 0,
-			'updated'      => 0,
-			'author'       => 0,
+			'status'          => 'published', // Either 'published' or 'draft'.
+			'path'            => '',          // Empty for the prefix URL; the word home for the front page; otherwise a relative path.
+			'noindex'         => false,
+			'no_snippets'     => false,
+			'seo_title'       => '',          // Link preview and search title ('' keeps the page's own).
+			'seo_description' => '',          // Link preview and search description.
+			'seo_image'       => '',          // Preview image: one of the page's files, or a full URL.
+			'preview_salt'    => 0,           // Bumped to invalidate the preview link.
+			'created'         => 0,
+			'updated'         => 0,
+			'author'          => 0,
 		);
 
 		/**
@@ -141,8 +144,11 @@ class HTMLPP_Meta {
 		$path           = isset( $record['path'] ) ? self::sanitize_path( $record['path'] ) : '';
 		$record['path'] = null === $path ? '' : $path;
 
-		$record['noindex']      = ! empty( $record['noindex'] );
-		$record['no_snippets']  = ! empty( $record['no_snippets'] );
+		$record['noindex']     = ! empty( $record['noindex'] );
+		$record['no_snippets'] = ! empty( $record['no_snippets'] );
+		foreach ( array( 'seo_title', 'seo_description', 'seo_image' ) as $key ) {
+			$record[ $key ] = isset( $record[ $key ] ) && is_scalar( $record[ $key ] ) ? (string) $record[ $key ] : '';
+		}
 		$record['preview_salt'] = isset( $record['preview_salt'] ) ? (int) $record['preview_salt'] : 0;
 		$record['created']      = isset( $record['created'] ) ? (int) $record['created'] : 0;
 		$record['updated']      = isset( $record['updated'] ) ? (int) $record['updated'] : 0;

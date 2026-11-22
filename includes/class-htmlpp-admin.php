@@ -215,7 +215,7 @@ class HTMLPP_Admin {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Verified below.
 		if ( isset( $_GET['htmlpp_recheck'] ) ) {
 			check_admin_referer( 'htmlpp_recheck' );
-			HTMLPP_Storage::direct_access_status( true );
+			HTMLPP_Delivery::run_check();
 			wp_safe_redirect( remove_query_arg( array( 'htmlpp_recheck', '_wpnonce' ) ) );
 			exit;
 		}
@@ -305,16 +305,18 @@ class HTMLPP_Admin {
 	 */
 	private function redirect_target( $notice ) {
 		// Handlers that moved or created a page tell us where it lives now.
-		if ( ! empty( $notice['slug'] ) && 'success' === $notice['type'] ) {
+		if ( ! empty( $notice['slug'] ) && in_array( $notice['type'], array( 'success', 'warning' ), true ) ) {
+			// A new page with missing files opens on its edit screen, where
+			// they are listed.
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Read-only routing; the mutation was already nonce-verified.
-			if ( isset( $_POST['htmlpp_upload'] ) ) {
+			if ( isset( $_POST['htmlpp_upload'] ) && empty( $notice['missing'] ) ) {
 				return self::list_url();
 			}
 			return self::edit_url( $notice['slug'] );
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Read-only routing; the mutation was already nonce-verified.
-		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete', 'htmlpp_page_settings', 'htmlpp_duplicate', 'htmlpp_reset_preview' ) as $key ) {
+		foreach ( array( 'htmlpp_edit', 'htmlpp_restore', 'htmlpp_asset_upload', 'htmlpp_asset_replace', 'htmlpp_asset_delete', 'htmlpp_page_settings', 'htmlpp_page_seo', 'htmlpp_missing_upload', 'htmlpp_fix_ref', 'htmlpp_duplicate', 'htmlpp_reset_preview' ) as $key ) {
 			if ( isset( $_POST[ $key ] ) ) {
 				$slug = HTMLPP_Storage::sanitize_slug( sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );
 				return '' !== $slug ? self::edit_url( $slug ) : self::list_url();
@@ -859,6 +861,17 @@ class HTMLPP_Admin {
 			);
 		}
 
+		if ( 'open' === $status && HTMLPP_Delivery::UPLOADS === HTMLPP_Delivery::mode() ) {
+			return array(
+				'label'       => __( 'HTML Page Publisher’s pages load their files from the uploads folder', 'html-page-publisher' ),
+				'status'      => 'good',
+				'badge'       => $badge,
+				'description' => '<p>' . esc_html__( 'This host answers requests for CSS, JavaScript and image files itself, so pages load those files straight from the plugin’s uploads folder. Keep that folder reachable: blocking it breaks your pages. Anyone who guesses a page’s folder can open its files, drafts included.', 'html-page-publisher' ) . '</p>',
+				'actions'     => $action,
+				'test'        => 'htmlpp_storage_protection',
+			);
+		}
+
 		if ( 'open' === $status ) {
 			return array(
 				'label'       => __( 'HTML Page Publisher’s page files can be opened directly', 'html-page-publisher' ),
@@ -1057,6 +1070,10 @@ class HTMLPP_Admin {
 			return;
 		}
 
+		if ( HTMLPP_Delivery::check_is_stale() ) {
+			HTMLPP_Delivery::schedule_check();
+		}
+
 		$pages = HTMLPP_Storage::list_pages();
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-upload.php';
@@ -1070,7 +1087,10 @@ class HTMLPP_Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'html-page-publisher' ) );
 		}
 
-		$tab         = $this->current_settings_tab();
+		$tab = $this->current_settings_tab();
+		if ( 'general' === $tab && HTMLPP_Delivery::check_is_stale() ) {
+			HTMLPP_Delivery::run_check();
+		}
 		$protection  = HTMLPP_Storage::direct_access_status();
 		$recheck_url = wp_nonce_url( add_query_arg( 'htmlpp_recheck', '1', self::settings_url( 'general' ) ), 'htmlpp_recheck' );
 		$ai          = HTMLPP_Abilities::status();
@@ -1110,6 +1130,10 @@ class HTMLPP_Admin {
 		$meta             = HTMLPP_Meta::get( $slug );
 		$preview_url      = HTMLPP_Meta::preview_url( $slug );
 		$accept           = HTMLPP_Uploader::accept_attribute();
+		$missing          = htmlpp()->pages->missing_files( $slug );
+		$missing          = is_wp_error( $missing ) ? array() : $missing;
+		$seo_own          = HTMLPP_Seo::page_values( $content, HTMLPP_Storage::public_file_url( $slug, '' ) );
+		$seo_image_url    = HTMLPP_Renderer::seo_image_url( $slug, $meta['seo_image'] );
 
 		include HTMLPP_PLUGIN_DIR . 'views/admin-edit.php';
 	}
