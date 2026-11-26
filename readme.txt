@@ -3,7 +3,7 @@ Contributors: hosseinkarami
 Donate link: https://buymeacoffee.com/hosseinkarami?utm_source=wordpress.org&utm_medium=plugin-page&utm_campaign=donate&utm_content=readme-donate
 Tags: landing page, claude design, ai, mcp, static html
 Requires at least: 5.9
-Tested up to: 7.1
+Tested up to: 7.2
 Requires PHP: 7.4
 Stable tag: 1.7.0
 License: GPLv2 or later
