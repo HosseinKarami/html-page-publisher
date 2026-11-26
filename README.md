@@ -213,7 +213,7 @@ Building your own? Start with the [PHP API](#php-api) and [Hooks](#hooks).
 
 ## Development
 
-**Requirements:** WordPress 5.9+, PHP 7.4+ (ZIP import needs the ZipArchive extension). Tested up to WordPress 7.1.
+**Requirements:** WordPress 5.9+, PHP 7.4+ (ZIP import needs the ZipArchive extension). Tested up to WordPress 7.2.
 
 ### Running locally
 
